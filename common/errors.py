@@ -16,6 +16,16 @@ def get_errors_defined():
             'message':'Not found',
             'status':status_codes.HTTP_404_NOT_FOUND
         },
+        'DeviceNotExistError':{
+            'message':'specific device not found',
+            'error_code':101301,
+            'status':status_codes.HTTP_404_NOT_FOUND
+        },
+        'AccessDatabaseError':{
+            'message':'Access database failed',
+            'error_code':101302,
+            'status':status_codes.HTTP_503_SERVICE_UNAVAILABLE
+        },
     }
 
 class NoContentError(HTTPException):

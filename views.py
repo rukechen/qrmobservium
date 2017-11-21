@@ -19,3 +19,5 @@ app_for_resources = {
 
 api.add_resource(devices.DeviceDataCollecting, '/v1/devices/analysis', resource_class_kwargs=app_for_resources)
 api.add_resource(devices.DeviceUpdate, '/v1/devices/update', resource_class_kwargs=app_for_resources)
+api.add_resource(devices.DeviceManage, '/v1/devices/devicemgt', resource_class_kwargs=app_for_resources)
+api.add_resource(devices.DeviceDetailInfo, '/v1/devices/devicedetailinfo', resource_class_kwargs=app_for_resources)
