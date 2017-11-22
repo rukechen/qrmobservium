@@ -132,7 +132,7 @@ class DeviceDetailInfo(BaseResource):
 
         return mesg, status_codes.HTTP_200_OK
 
-         
+#class  
 
 
 

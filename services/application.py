@@ -13,3 +13,6 @@ class Application(object):
     @classmethod
     def get_device_reader(cls):
         return interfaces.DeviceReader()
+    @classmethod
+    def get_data_analysis_reader(cls):
+        return interfaces.DataAnalysisReader()

@@ -2,7 +2,7 @@ from flask import Flask, Blueprint, send_from_directory, make_response, request,
 from flask_cors import CORS
 from flask_restful import Api
 
-from qrmobservium.resources import devices
+from qrmobservium.resources import devices, analysis
 from qrmobservium.common import errors
 from qrmobservium.services.application import Application
 
@@ -21,3 +21,7 @@ api.add_resource(devices.DeviceDataCollecting, '/v1/devices/analysis', resource_
 api.add_resource(devices.DeviceUpdate, '/v1/devices/update', resource_class_kwargs=app_for_resources)
 api.add_resource(devices.DeviceManage, '/v1/devices/devicemgt', resource_class_kwargs=app_for_resources)
 api.add_resource(devices.DeviceDetailInfo, '/v1/devices/devicedetailinfo', resource_class_kwargs=app_for_resources)
+
+#analysis
+
+api.add_resource(analysis.AnalysisSNMPHistory, '/v1/analysis/snmp/<string:device_id>/<string:sensor_id>', resource_class_kwargs=app_for_resources)
