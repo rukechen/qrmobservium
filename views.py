@@ -24,4 +24,4 @@ api.add_resource(devices.DeviceDetailInfo, '/v1/devices/devicedetailinfo', resou
 
 #analysis
 
-api.add_resource(analysis.AnalysisSNMPHistory, '/v1/analysis/snmp/<string:device_id>/<string:sensor_id>', resource_class_kwargs=app_for_resources)
+api.add_resource(analysis.AnalysisSNMPHistory, '/v1/analysis/snmp/<string:device_id>/<string:metric_id>', resource_class_kwargs=app_for_resources)

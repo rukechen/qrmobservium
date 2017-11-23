@@ -12,11 +12,11 @@ history_analysis_parser.add_argument('end_time', type=str, location='args', requ
 history_analysis_parser.add_argument('metric', type=unicode, location='args', default=None)
 
 class AnalysisSNMPHistory(BaseResource):
-    def get(self, device_id, sensor_id):
+    def get(self, device_id, metric_id):
         mesg = {}
         args = history_analysis_parser.parse_args()
         try:
-            mesg = self.app.get_data_analysis_reader().get_snmp_health_history_data(device_id, args['metric'], sensor_id, args['start_time'], args['end_time'])
+            mesg = self.app.get_data_analysis_reader().get_snmp_health_history_data(device_id, args['metric'], metric_id, args['start_time'], args['end_time'])
         except Exception as e:
             LOG.warning('AccessDatabaseError: '+str(e))
             raise AccessDatabaseError
