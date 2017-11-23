@@ -2,7 +2,7 @@ import datetime
 from qrmobservium.common import logger
 from qrmobservium.persistent import dbutil
 import simplejson
-import rrdtool
+import rrdtool, re, os
 LOG = logger.Logger(__name__)
 
 
@@ -64,44 +64,76 @@ class DeviceReader(object):
         
 
 class DataAnalysisReader(object):
+
     @classmethod
-    def get_snmp_health_history_data(cls, device_id, table, sensor_id, start_time=None, end_time=None):
+    def get_snmp_health_history_data(cls, device_id, table, metric_id, start_time=None, end_time=None):
         result = {}
         datas = []
-        tables = ['processors', 'mempools', 'printersupplies', 'sensors', 'storage']
-        if table not in tables:
+        columns = []
+        #tables = ['processors', 'mempools', 'printersupplies', 'sensors', 'storage']
+        tables = {'processors': 'processor', 'mempools': 'mempool', 'printersupplies': 'supply', 'sensors': 'sensor', 'storage': 'storage'}
+        if any( curtable == table  for curtable in tables) is False:
             LOG.warning('illegal table')
             raise KeyError('illegal table')
         dev_id = DeviceReader().get_device_host_by_id(device_id)
         
         with dbutil.Session() as db:
-            #SELECT * FROM `sensors` WHERE `device_id` = '15' AND 'sensor_id' = '61'
             #SELECT * FROM `sensors` WHERE `sensor_id` = '61' AND `device_id` = '15'
-            ret = db.row(sql="SELECT * FROM " + table + " WHERE `device_id` =  %s AND `sensor_id` = %s", param=(device_id, sensor_id))
-            #print ret
+
+            ret = db.row(sql="SELECT * FROM " + table + " WHERE `device_id` =  %s AND " + tables[table] + "_id" + "= %s", param=(device_id, metric_id))
             if ret is None:
                 LOG.warning('id not found')
                 raise KeyError('id not found')
             # query rrd
-            rrdfile = '/opt/observium/rrd' + '/'+ dev_id['hostname'] + '/' + 'sensor' + '-' +ret['sensor_class'] + '-' + ret['sensor_type'] + '-' + ret['sensor_index'] + '.rrd'
+            rrdfile = ''
+            if tables[table] == 'sensor':
+                rrdfile = '/opt/observium/rrd' + '/'+ dev_id['hostname'] + '/' + tables[table] + \
+                           '-' + ret['sensor_class'] + '-' + ret['sensor_type'] + '-' + ret['sensor_index'] + '.rrd'
+                #for sensor, the unit should be sensor_class
+            elif tables[table] == 'mempool':
+                rrdfile = '/opt/observium/rrd' + '/' + dev_id['hostname'] + '/' + tables[table] + \
+                           '-' + ret['%s_mib' %  tables[table]].lower() + '-' + ret['%s_index' % tables[table]] + '.rrd'
+                result['unit'] = 'Bytes'
+            elif tables[table] == 'storage':
+               filename = ret['%s_mib' % tables[table]].lower() + '-' + ret['%s_descr' % tables[table]]
+               filename = re.sub('[^a-zA-Z0-9,._\-]', '_', filename)
+               rrdfile = '/opt/observium/rrd' + '/' + dev_id['hostname'] + '/' + tables[table] + \
+                         '-' + filename + '.rrd'
+               result['unit'] = 'Bytes'
+            elif tables[table] == 'processor':
+               #Reference includes/polling/processors.inc.php line 50
+               rrdfile = '/opt/observium/rrd' + '/' + dev_id['hostname'] + '/' + tables[table] + \
+                           '-' + ret['%s_type' % tables[table]] + '-' + ret['%s_index' % tables[table]] + '.rrd'
+
+
+            if not os.path.exists(rrdfile):
+                LOG.warning('rrdfile not found')
+                raise KeyError('rrdfile not found')
             if start_time is None and end_time is None:
                 ret = rrdtool.fetch(str(rrdfile), "AVERAGE")
             else:
                 ret = rrdtool.fetch(str(rrdfile), 'AVERAGE', '-s %s' % start_time, '-e %s' % end_time)
-            print ret
+            #print ret
             timestamp = ret[0][0]
             count = 0
+            if len (ret[1]) >= 2:
+                for column in ret[1]:
+                    columns.append(column)
+                result['columns'] = columns
             for value in ret[2]:
                data = {}
+               column = {}
                timestamp = ret[0][0] + ret[0][2] * count
                if value[0] is None:
                    data['%s' % timestamp] = value[0]
                else:
-                   data['%s' % timestamp] = "%.2f" % value[0]
+                   if len(value) >= 2:
+                       data['%s' % timestamp] = ["%.2f" % detailvalue for detailvalue in value]
+                   else:
+                       data['%s' % timestamp] = "%.2f" % value[0]
                count += 1
                datas.append(data)
             result['datas'] = datas
-            result['unit'] = 'RPM'
             result['lower_bound'] = 'na'
             result['upper_bound'] = 'na'
             #print ret
