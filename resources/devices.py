@@ -123,7 +123,7 @@ class DeviceDetailInfo(BaseResource):
             if device_id is None:
                 raise KeyError('type error')
             else:
-                print device_id
+                ret = execute_cmd("/usr/bin/env php /opt/observium/discovery.php -h %s" % (args['ip']))
                 mesg = self.app.get_device_reader().get_device_detail_by_id(device_id['device_id'])
         except KeyError as e:
             raise DeviceNotExistError 
