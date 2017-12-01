@@ -1,0 +1,86 @@
+{
+  "device_id": 16,
+  "portsdetails": [
+    {
+      "ifDescr": "lo",
+      "port_id": 565,
+      "iPhyAddress": "",
+      "ipv4_address": "127.0.0.1",
+      "ipv4_network": "127.0.0.0/8",
+      "ipv4_prefixlen": "8",
+      "ifAlias": ""
+    },
+    {
+      "ifDescr": "eth0",
+      "port_id": 566,
+      "iPhyAddress": "245ebe1b269e"
+    },
+    {
+      "ifDescr": "qvs0",
+      "port_id": 572,
+      "iPhyAddress": "245ebe1b269e",
+      "ipv4_address": "172.17.30.134",
+      "ipv4_network": "172.17.30.0/23",
+      "ipv4_prefixlen": "23",
+      "ifAlias": ""
+    },
+    {
+      "ifDescr": "qvs1",
+      "port_id": 573,
+      "iPhyAddress": "245ebe1b269f",
+      "ipv4_address": "192.168.0.108",
+      "ipv4_network": "192.168.0.0/24",
+      "ipv4_prefixlen": "24",
+      "ifAlias": ""
+    }
+  ],
+  "arptable": [
+    {
+      "ipv4_address": "10.8.2.11",
+      "port_id": "566",
+      "iPhyAddress": "34dbfd3d77d4",
+      "ifDescr": "eth1"
+    },
+    {
+      "ipv4_address": "10.8.2.11",
+      "port_id": "567",
+      "iPhyAddress": "38d5473ac442",
+      "ifDescr": "qvs0"
+    },
+    {
+      "ipv4_address": "172.17.30.14",
+      "port_id": "572",
+      "iPhyAddress": "00089bfeea32",
+      "ifDescr": "eth0"
+    }
+  ],
+  "ipv4_addresses": [
+    {
+      "port_id": 575,
+      "ifDescr": "lxcbr0",
+      "ipv4_address": "10.0.3.1",
+      "iPhyAddress": "ea9524b836d1",
+      "ipv4_network": "10.0.3.1/24",
+      "ipv4_prefixlen": "24",
+      "ifAlias": ""
+    },
+    {
+      "port_id": 572,
+      "ifDescr": "qvs0",
+      "ipv4_address": "172.17.30.134",
+      "iPhyAddress": "245ebe1b269e",
+      "ipv4_network": "172.17.30.0/23",
+      "ipv4_prefixlen": "23",
+      "ifAlias": ""
+    },
+    {
+      "port_id": 565,
+      "ifDescr": "lo",
+      "iPhyAddress": "",
+      "ipv4_address": "127.0.0.1",
+      "ipv4_network": "127.0.0.0/8",
+      "ipv4_prefixlen": "8",
+      "ifAlias": ""
+    }
+  ]
+}
