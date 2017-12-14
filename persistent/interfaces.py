@@ -71,7 +71,8 @@ class DataAnalysisReader(object):
         datas = []
         columns = []
         #tables = ['processors', 'mempools', 'printersupplies', 'sensors', 'storage']
-        tables = {'processors': 'processor', 'mempools': 'mempool', 'printersupplies': 'supply', 'sensors': 'sensor', 'storage': 'storage'}
+        tables = {'processors': 'processor', 'mempools': 'mempool', 'printersupplies': 'supply', 'sensors': 'sensor', 'storage': 'storage', \
+                  'ports':'port'}
         if any( curtable == table  for curtable in tables) is False:
             LOG.warning('illegal table')
             raise KeyError('illegal table')
@@ -104,8 +105,10 @@ class DataAnalysisReader(object):
                #Reference includes/polling/processors.inc.php line 50
                rrdfile = '/opt/observium/rrd' + '/' + dev_id['hostname'] + '/' + tables[table] + \
                            '-' + ret['%s_type' % tables[table]] + '-' + ret['%s_index' % tables[table]] + '.rrd'
-
-
+            elif tables[table] == 'port':
+               rrdfile = '/opt/observium/rrd' + '/' + dev_id['hostname'] + '/' + tables[table] + \
+                            '-' + str(ret['ifIndex']) + '.rrd'
+            #print rrdfile
             if not os.path.exists(rrdfile):
                 LOG.warning('rrdfile not found')
                 raise KeyError('rrdfile not found')
