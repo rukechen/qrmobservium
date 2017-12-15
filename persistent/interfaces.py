@@ -147,6 +147,30 @@ class DeviceReader(object):
             result['device_id'] = device_id
         return result
 
+    @classmethod
+    def get_device_neighbours(cls, device_id):
+        result = {}
+        with dbutil.Session() as db:
+             neighbours = db.all(sql="SELECT * FROM `neighbours` LEFT JOIN `ports` USING(`port_id`) WHERE `active` = 1 \
+                       AND `device_id` = %s AND ((`deleted`='0' AND (`port_id` != '' AND `port_id` IS NOT NULL)))",  param=(device_id))
+             metrics = []
+             for ret in neighbours:
+                 metric = {}
+                 metric["port_id"] = ret["port_id"]
+                 metric["ifDescr"] = ret["ifDescr"]
+                 metric["ifAlias"] = ret["ifAlias"]
+                 metric["remote_hostname"] = ret["remote_hostname"]
+                 metric["remote_port"] = ret["remote_port"]
+                 metric["remote_platform"] = ret["remote_platform"]
+                 metric["remote_address"] = ret["remote_address"]
+                 metric["protocol"] = ret["protocol"]
+                 metrics.append(metric)
+             result["neighbours"] = metrics
+             result['device_id'] = device_id
+        return result
+
+
+
 class DataAnalysisReader(object):
 
     @classmethod

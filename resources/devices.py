@@ -163,6 +163,20 @@ class DeviceArptable(BaseResource):
             raise AccessDatabaseError
 
         return mesg, status_codes.HTTP_200_OK
+
+class DeviceNeighbours(BaseResource):
+    def get(self, device_id):
+        mesg = {}
+        try:
+            mesg = self.app.get_device_reader().get_device_neighbours(device_id)
+
+        except KeyError as e:
+            raise DeviceNotExistError
+        except Exception as e:
+            raise AccessDatabaseError
+
+        return mesg, status_codes.HTTP_200_OK
+
 #class  
 
 
