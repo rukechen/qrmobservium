@@ -16,6 +16,9 @@ device_detailinfo_parser.add_argument('jid', type=str, location='json', required
 device_detailinfo_parser.add_argument('ip', type=str, location='json', required=True)
 device_detailinfo_parser.add_argument('hostname', type=str, location='json')
 
+device_arp_parser = reqparse.RequestParser()
+device_arp_parser.add_argument('page', type=int, location='args', default=1)
+device_arp_parser.add_argument('limit', type=int, location='args', default=50)
 
 def execute_cmd(cmd):
     try:
@@ -132,6 +135,34 @@ class DeviceDetailInfo(BaseResource):
 
         return mesg, status_codes.HTTP_200_OK
 
+
+class DeviceNetworkInfo(BaseResource):
+    def get(self, device_id):
+        mesg = {}
+        try:
+            mesg = self.app.get_device_reader().get_device_networkinfo(device_id)
+
+        except KeyError as e:
+            raise DeviceNotExistError
+        except Exception as e:
+            raise AccessDatabaseError
+
+        return mesg, status_codes.HTTP_200_OK
+
+
+class DeviceArptable(BaseResource):
+    def get(self, device_id):
+        mesg = {}
+        args = device_arp_parser.parse_args()
+        try:
+            mesg = self.app.get_device_reader().get_device_arptable(device_id, cur_page= args['page'], page_size=args['limit'])
+
+        except KeyError as e:
+            raise DeviceNotExistError
+        except Exception as e:
+            raise AccessDatabaseError
+
+        return mesg, status_codes.HTTP_200_OK
 #class  
 
 
