@@ -87,24 +87,41 @@ class DeviceReader(object):
             ports = db.all(sql="SELECT *, `ports`.`port_id` as `port_id` FROM `ports` WHERE `device_id` =  %s ORDER BY `ifIndex` ASC",\
                               param=(device_id))
             #ret = db.all(sql= "SELECT *, `ports`.`port_id` as `port_id` FROM `ports` WHERE `device_id` = 15 ORDER BY `ifIndex` ASC")
-            contructports = []
+            constructports = []
             for port in ports:
                 #print port
-                contructport = {}
-                contructport["ifDescr"] = port["ifDescr"]
-                contructport["port_id"] = port["port_id"]
-                contructport["ifPhysAddress"] = port["ifPhysAddress"]
-                contructport["ifDescr"] = port["ifDescr"]
+                constructport = {}
+                constructport["ifDescr"] = port["ifDescr"]
+                constructport["port_id"] = port["port_id"]
+                constructport["ifPhysAddress"] = port["ifPhysAddress"]
+                constructport["ifDescr"] = port["ifDescr"]
                 #get ipv4address
                 address = db.row(sql= "SELECT * FROM `ipv4_addresses` WHERE `port_id` = %s", param=(port["port_id"]))
                 if address:
-                    contructport["ipv4_address"] = address["ipv4_address"]
+                    constructport["ipv4_address"] = address["ipv4_address"]
                 else:
-                    contructport["ipv4_address"] = ""
-                contructports.append(contructport)
+                    constructport["ipv4_address"] = ""
+                constructports.append(constructport)
 
+            ipv4addresses = db.all(sql="SELECT * FROM `ipv4_addresses` AS A LEFT JOIN `ports` AS I ON I.`port_id` = A.`port_id` \
+                                         LEFT JOIN `devices` AS D ON I.`device_id` = D.`device_id` \
+                                         LEFT JOIN `ipv4_networks` AS N ON N.`ipv4_network_id` = A.`ipv4_network_id` \
+                                         WHERE 1 AND `I`.`device_id` = %s AND ((`I`.`deleted`='0' AND (`I`.`port_id` != '' \
+                                         AND `I`.`port_id` IS NOT NULL))) ORDER BY A.`ipv4_address`", param=(device_id))
+            constructaddresses = []
+            for address in ipv4addresses:
+                constructaddress= {}
+                constructaddress["ifDescr"] = address["ifDescr"]
+                constructaddress["port_id"] = address["port_id"]
+                constructaddress["ipv4_address"] = address["ipv4_address"]
+                constructaddress["ifPhysAddress"] = address["ifPhysAddress"]
+                constructaddress["ipv4_network"] = address["ipv4_network"]
+                constructaddress["ipv4_prefixlen"] = address["ipv4_prefixlen"]
+                constructaddress["ifAlias"] = address["ifAlias"]
+                constructaddresses.append(constructaddress)
             result['device_id'] = device_id
-            result['ports'] = contructports
+            result['ports'] = constructports
+            result['ipv4_addresses'] = constructaddresses
         return result
 
     @classmethod
