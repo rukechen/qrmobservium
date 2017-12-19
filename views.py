@@ -28,6 +28,8 @@ api.add_resource(devices.DeviceNetworkInfo, '/v1/devices/networkinfo/<string:dev
 api.add_resource(devices.DeviceArptable, '/v1/devices/arptable/<string:device_id>', resource_class_kwargs=app_for_resources)
 api.add_resource(devices.DeviceNeighbours, '/v1/devices/neighbours/<string:device_id>', resource_class_kwargs=app_for_resources)
 api.add_resource(devices.DeviceFdbtable, '/v1/devices/fdbtable/<string:device_id>', resource_class_kwargs=app_for_resources)
+api.add_resource(devices.DeviceVlans, '/v1/devices/vlans/<string:device_id>', resource_class_kwargs=app_for_resources)
+
 #analysis
 
 api.add_resource(analysis.AnalysisSNMPHistory, '/v1/analysis/snmp/<string:device_id>/<string:metric_id>', resource_class_kwargs=app_for_resources)

@@ -195,6 +195,19 @@ class DeviceFdbtable(BaseResource):
 
         return mesg, status_codes.HTTP_200_OK
 
+class DeviceVlans(BaseResource):
+    def get(self, device_id):
+        mesg = {}
+        try:
+            mesg = self.app.get_device_reader().get_device_vlans(device_id)
+
+        except KeyError as e:
+            raise DeviceNotExistError
+        except Exception as e:
+            raise AccessDatabaseError
+
+        return mesg, status_codes.HTTP_200_OK
+
 #class  
 
 

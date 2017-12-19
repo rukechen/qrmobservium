@@ -194,6 +194,34 @@ class DeviceReader(object):
             result['fdbtable'] = metrics
             result['device_id'] = device_id
         return result
+    @classmethod
+    def get_device_vlans(cls, device_id):
+        result = {}
+        with dbutil.Session() as db:
+            vlans = db.all(sql="SELECT * FROM `vlans` WHERE `device_id` = %s ORDER BY 'vlan_vlan'", param=(device_id))
+            metrics = []
+
+            for vlan in vlans:
+                metric = {}
+                constructotherports = []
+                otherports = db.all(sql="SELECT * FROM `ports_vlans` AS V, `ports` as P WHERE V.`device_id` = %s AND V.`vlan` = %s \
+                     AND P.port_id = V.port_id", param=(device_id, vlan['vlan_vlan']))
+                for otherport in otherports:
+                    constructotherport = {}
+                    constructotherport["ifName"] = otherport["ifName"]
+                    constructotherport["ifIndex"] = otherport["ifIndex"]
+                    constructotherports.append(constructotherport)
+                ports = db.all(sql="SELECT * FROM ports WHERE `device_id` = %s AND `ifVlan` = %s", param=(device_id, vlan['vlan_vlan']))
+                for port in ports:
+                    for ports_vlan in constructotherports:
+                        if port['ifIndex'] == ports_vlan["ifIndex"]:
+                            ports_vlan["untagged"] = 1
+                metric["vlan_vlan"] = vlan["vlan_vlan"]
+                metric["vlan_name"] = vlan["vlan_name"]
+                metric["otherports"] = constructotherports
+                metrics.append(metric)
+            result['vlan'] = metrics
+        return result
 
 
 class DataAnalysisReader(object):
