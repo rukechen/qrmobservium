@@ -20,6 +20,10 @@ device_arp_parser = reqparse.RequestParser()
 device_arp_parser.add_argument('page', type=int, location='args', default=1)
 device_arp_parser.add_argument('limit', type=int, location='args', default=50)
 
+device_fdb_parser = reqparse.RequestParser()
+device_fdb_parser.add_argument('page', type=int, location='args', default=1)
+device_fdb_parser.add_argument('limit', type=int, location='args', default=50)
+
 def execute_cmd(cmd):
     try:
         #print cmd
@@ -169,6 +173,20 @@ class DeviceNeighbours(BaseResource):
         mesg = {}
         try:
             mesg = self.app.get_device_reader().get_device_neighbours(device_id)
+
+        except KeyError as e:
+            raise DeviceNotExistError
+        except Exception as e:
+            raise AccessDatabaseError
+
+        return mesg, status_codes.HTTP_200_OK
+
+class DeviceFdbtable(BaseResource):
+    def get(self, device_id):
+        mesg = {}
+        args = device_fdb_parser.parse_args()
+        try:
+            mesg = self.app.get_device_reader().get_device_fdbtable(device_id, cur_page= args['page'], page_size=args['limit'])
 
         except KeyError as e:
             raise DeviceNotExistError

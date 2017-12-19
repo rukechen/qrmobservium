@@ -168,7 +168,32 @@ class DeviceReader(object):
              result["neighbours"] = metrics
              result['device_id'] = device_id
         return result
+    @classmethod
+    def get_device_fdbtable(cls, device_id, cur_page=1, page_size=50):
+        result = {}
+        with dbutil.Session() as db:
+            count = db.one(sql="SELECT count('vlan_id') FROM `vlans_fdb` AS F LEFT JOIN `vlans` as V ON V.`vlan_vlan` = F.`vlan_id` \
+                           AND V.`device_id` = F.`device_id` LEFT JOIN `ports` AS I ON I.`port_id` = F.`port_id` WHERE 1 \
+                           AND `I`.`device_id` = %s AND ((`I`.`deleted`='0' AND (`I`.`port_id` != '' AND `I`.`port_id` IS NOT NULL)))", \
+                           param=(device_id))
+            result['total'] = count
 
+            fdb = db.all(sql="SELECT * FROM `vlans_fdb` AS F LEFT JOIN `vlans` as V ON V.`vlan_vlan` = F.`vlan_id` \
+                           AND V.`device_id` = F.`device_id` LEFT JOIN `ports` AS I ON I.`port_id` = F.`port_id` WHERE 1 \
+                           AND `I`.`device_id` = %s AND ((`I`.`deleted`='0' AND (`I`.`port_id` != '' AND `I`.`port_id` IS NOT NULL))) \
+                           LIMIT %s,%s", param=(device_id, (cur_page-1)*page_size, page_size))
+            metrics = []
+            for ret in fdb:
+                metric = {}
+                metric["fdb_status"] = ret["fdb_status"]
+                metric["ifName"] = ret["ifName"]
+                metric["ifPhysAddress"] = ret["ifPhysAddress"]
+                metric["vlan_name"] = ret["vlan_name"]
+                metric["ifVlan"] = ret["ifVlan"]
+                metrics.append(metric)
+            result['fdbtable'] = metrics
+            result['device_id'] = device_id
+        return result
 
 
 class DataAnalysisReader(object):
