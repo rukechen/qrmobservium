@@ -1,7 +1,7 @@
 from flask_restful import request, reqparse, abort, fields, marshal
 from qrmobservium.resources.base_resource import BaseResource
 from qrmobservium.common import status_codes
-from qrmobservium.common.errors import DeviceNotExistError, AccessDatabaseError, DeviceAlreadyExistError
+from qrmobservium.common.errors import DeviceNotExistError, AccessDatabaseError, DeviceAlreadyExistError, InvalidParametersError
 import rrdtool
 import subprocess, sys
 
@@ -104,11 +104,31 @@ class DeviceManage(BaseResource):
             'task_detail':'add_devices',
             'desc':'add_devices',
         }
-        #print 'task_mgs %s' % task_msg
         try:
             for dev in task_msg['devices']:
                 #print 'dev %s %s '% (dev['ip'], dev['community'])
-                ret = execute_cmd("/usr/bin/env php /opt/observium/add_device.php  %s %s" % (dev['ip'], dev['community']))
+                if dev['snmpversion'] == 'v3':
+                    if not dev['level']:
+                        raise InvalidParametersError
+                    if dev['level'] == 'authNoPriv':
+                        if not dev['username'] or not dev['password'] or not dev['auth_protocol']:
+                            raise InvalidParametersError
+                        ret = execute_cmd("/usr/bin/env php /opt/observium/add_device.php %s %s %s %s %s %s" % \
+                            (dev['ip'], dev['level'], dev['snmpversion'], dev['username'], dev['password'], dev['auth_protocol']))
+                    elif dev['level'] == 'authPriv':
+                        if not dev['username'] or not dev['password'] or not dev['auth_protocol'] \
+                            or not dev['priv_protocol'] or not dev['enckey']:
+                            raise InvalidParametersError
+                        ret = execute_cmd("/usr/bin/env php /opt/observium/add_device.php %s %s %s %s %s %s %s %s" % \
+                            (dev['ip'], dev['level'], dev['snmpversion'], dev['username'], dev['password'], \
+                             dev['enckey'], dev['auth_protocol'], dev['priv_protocol']))
+                        #print ret
+                    else:
+                        ret = execute_cmd("/usr/bin/env php /opt/observium/add_device.php %s %s" % (dev['ip'], "noAuthNoPriv" ))
+                else:
+                    if not dev['community']:
+                        raise InvalidParametersError
+                    ret = execute_cmd("/usr/bin/env php /opt/observium/add_device.php  %s %s" % (dev['ip'], dev['community']))
                 #print ret
                 #Devices failed
                 #Added device 172.17.30.98 (25)
@@ -121,6 +141,8 @@ class DeviceManage(BaseResource):
                 else:
                     raise DeviceNotExistError
         except DeviceNotExistError as e:
+            raise e
+        except InvalidParametersError as e:
             raise e
         except DeviceAlreadyExistError as e:
             raise e

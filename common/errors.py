@@ -29,6 +29,10 @@ def get_errors_defined():
         'DeviceAlreadyExistError':{
             'message':'Device already exist',
             'status':status_codes.HTTP_400_BAD_REQUEST
+        },
+        'InvalidParametersError':{
+            'message':'Invalid parameters',
+            'status':status_codes.HTTP_400_BAD_REQUEST
         }
     }
 
