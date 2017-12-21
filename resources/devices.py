@@ -80,10 +80,15 @@ class DeviceManage(BaseResource):
         try:
             for dev in task_msg['devices']:
                 #print 'dev %s' % dev
-                ret = execute_cmd("/usr/bin/env php /opt/observium/delete_device.php %s rrd" % dev['ip'])
+                if not dev['device_id']:
+                    raise DeviceNotExistError
+                result = self.app.get_device_reader().get_device_host_by_id(dev['device_id'])
+                ret = execute_cmd("/usr/bin/env php /opt/observium/delete_device.php %s rrd" % result['hostname'])
                 #print 'command result %s' % ret
+        except DeviceNotExistError as e:
+            raise e
         except Exception as e:
-            print e
+            abort(status_codes.HTTP_404_NOT_FOUND, message="Device not found")
 
         return "", status_codes.HTTP_201_CREATED
 
