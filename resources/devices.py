@@ -90,6 +90,7 @@ class DeviceManage(BaseResource):
 
 
     def post(self):
+        mesg = {}
         args = device_mgt_parser.parse_args()
         devices = args['devices']
         task_msg = {
@@ -99,27 +100,27 @@ class DeviceManage(BaseResource):
             'task_detail':'add_devices',
             'desc':'add_devices',
         }
-        print 'task_mgs %s' % task_msg
+        #print 'task_mgs %s' % task_msg
         try:
             for dev in task_msg['devices']:
                 #print 'dev %s %s '% (dev['ip'], dev['community'])
                 ret = execute_cmd("/usr/bin/env php /opt/observium/add_device.php  %s %s" % (dev['ip'], dev['community']))
-                print ret
+                #print ret
+                #Devices failed
+                #Added device 172.17.30.98 (25)
                 if 'success' in ret:
                     #get_device_detail_by_hostname
-                    #device_id = self.app.get_device_reader().get_device_id_by_host(dev['ip'])
-                    #if device_id is None:
-                        
-                    #self.app.get_device_reader().get_device_detail_by_id()
-                    print 'added successfully'
-                else:
+                    mesg = self.app.get_device_reader().get_device_id_by_host(dev['ip'])
+                    #print 'added successfully'
+                elif 'Already got device' in ret:
                     abort(status_codes.HTTP_400_BAD_REQUEST, message="Already added")
+                else:
+                    abort(status_codes.HTTP_404_NOT_FOUND, message="Device not found")
         except Exception as e:
-            print e
+            abort(status_codes.HTTP_404_NOT_FOUND, message="Device not found")
         #issue_device_mgt_command(self.app, task_msg)
 
-        return "", status_codes.HTTP_201_CREATED
-
+        return mesg, status_codes.HTTP_201_CREATED
 
 class DeviceDetailInfo(BaseResource):
     def post(self):
