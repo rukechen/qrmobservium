@@ -26,6 +26,10 @@ def get_errors_defined():
             'error_code':101302,
             'status':status_codes.HTTP_503_SERVICE_UNAVAILABLE
         },
+        'DeviceAlreadyExistError':{
+            'message':'Device already exist',
+            'status':status_codes.HTTP_400_BAD_REQUEST
+        }
     }
 
 class NoContentError(HTTPException):
@@ -64,3 +68,5 @@ class PermissionError(HTTPException):
 class UnknowExceptionError(HTTPException):
     pass
 
+class DeviceAlreadyExistError(HTTPException):
+    pass

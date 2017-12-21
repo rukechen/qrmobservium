@@ -1,7 +1,7 @@
 from flask_restful import request, reqparse, abort, fields, marshal
 from qrmobservium.resources.base_resource import BaseResource
 from qrmobservium.common import status_codes
-from qrmobservium.common.errors import DeviceNotExistError, AccessDatabaseError
+from qrmobservium.common.errors import DeviceNotExistError, AccessDatabaseError, DeviceAlreadyExistError
 import rrdtool
 import subprocess, sys
 
@@ -13,8 +13,7 @@ device_mgt_parser.add_argument('devices', type=list, location='json', default=[]
 
 device_detailinfo_parser = reqparse.RequestParser()
 device_detailinfo_parser.add_argument('jid', type=str, location='json', required=True)
-device_detailinfo_parser.add_argument('ip', type=str, location='json', required=True)
-device_detailinfo_parser.add_argument('hostname', type=str, location='json')
+device_detailinfo_parser.add_argument('device_id', type=str, location='json', required=True)
 
 device_arp_parser = reqparse.RequestParser()
 device_arp_parser.add_argument('page', type=int, location='args', default=1)
@@ -113,9 +112,13 @@ class DeviceManage(BaseResource):
                     mesg = self.app.get_device_reader().get_device_id_by_host(dev['ip'])
                     #print 'added successfully'
                 elif 'Already got device' in ret:
-                    abort(status_codes.HTTP_400_BAD_REQUEST, message="Already added")
+                    raise DeviceAlreadyExistError
                 else:
-                    abort(status_codes.HTTP_404_NOT_FOUND, message="Device not found")
+                    raise DeviceNotExistError
+        except DeviceNotExistError as e:
+            raise e
+        except DeviceAlreadyExistError as e:
+            raise e
         except Exception as e:
             abort(status_codes.HTTP_404_NOT_FOUND, message="Device not found")
         #issue_device_mgt_command(self.app, task_msg)
@@ -127,14 +130,15 @@ class DeviceDetailInfo(BaseResource):
         mesg = {}
         args = device_detailinfo_parser.parse_args()
         try:
-            device_id = self.app.get_device_reader().get_device_id_by_host(args['ip'])
+            device_id = args['device_id']
             if device_id is None:
                 raise KeyError('type error')
             else:
-                ret = execute_cmd("/usr/bin/env php /opt/observium/discovery.php -h %s" % (args['ip']))
-                mesg = self.app.get_device_reader().get_device_detail_by_id(device_id['device_id'])
+                result = self.app.get_device_reader().get_device_host_by_id(device_id)
+                ret = execute_cmd("/usr/bin/env php /opt/observium/discovery.php -h %s" % (result['hostname']))
+                mesg = self.app.get_device_reader().get_device_detail_by_id(device_id)
         except KeyError as e:
-            raise DeviceNotExistError 
+            raise DeviceNotExistError
         except Exception as e:
             raise AccessDatabaseError
 
