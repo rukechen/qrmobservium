@@ -2,8 +2,9 @@ from flask_restful import request, reqparse, abort, fields, marshal
 from qrmobservium.resources.base_resource import BaseResource
 from qrmobservium.common import status_codes
 from qrmobservium.common.errors import DeviceNotExistError, AccessDatabaseError, DeviceAlreadyExistError, InvalidParametersError
+from qrmobservium.common.utility import is_valid_ip_address
 import rrdtool
-import subprocess, sys
+import subprocess, sys, shlex
 
 
 device_mgt_parser = reqparse.RequestParser()
@@ -106,6 +107,8 @@ class DeviceManage(BaseResource):
         }
         try:
             for dev in task_msg['devices']:
+                if not is_valid_ip_address(dev['ip']):
+                    raise InvalidParametersError
                 #print 'dev %s %s '% (dev['ip'], dev['community'])
                 if dev['snmpversion'] == 'v3':
                     if not dev['level']:
@@ -113,20 +116,30 @@ class DeviceManage(BaseResource):
                     if dev['level'] == 'authNoPriv':
                         if not dev['username'] or not dev['password'] or not dev['auth_protocol']:
                             raise InvalidParametersError
+                        if len(shlex.split(dev['username'])) >= 2 or len(shlex.split(dev['password'])) >= 2 \
+                           or len(shlex.split(dev['auth_protocol'])) >= 2:
+                            raise InvalidParametersError
                         ret = execute_cmd("/usr/bin/env php /opt/observium/add_device.php %s %s %s %s %s %s" % \
-                            (dev['ip'], dev['level'], dev['snmpversion'], dev['username'], dev['password'], dev['auth_protocol']))
+                            (dev['ip'], 'authNoPriv', 'v3', dev['username'], \
+                             dev['password'], dev['auth_protocol']))
                     elif dev['level'] == 'authPriv':
                         if not dev['username'] or not dev['password'] or not dev['auth_protocol'] \
                             or not dev['priv_protocol'] or not dev['enckey']:
                             raise InvalidParametersError
+                        if len(shlex.split(dev['username'])) >= 2 or len(shlex.split(dev['password'])) >= 2 \
+                           or len(shlex.split(dev['auth_protocol'])) >= 2 or len(shlex.split(dev['enckey'])) >= 2 \
+                           or len(shlex.split(dev['priv_protocol'])) >= 2:
+                            raise InvalidParametersError
                         ret = execute_cmd("/usr/bin/env php /opt/observium/add_device.php %s %s %s %s %s %s %s %s" % \
-                            (dev['ip'], dev['level'], dev['snmpversion'], dev['username'], dev['password'], \
+                            (dev['ip'], 'authPriv', 'v3', dev['username'], dev['password'], \
                              dev['enckey'], dev['auth_protocol'], dev['priv_protocol']))
                         #print ret
                     else:
                         ret = execute_cmd("/usr/bin/env php /opt/observium/add_device.php %s %s" % (dev['ip'], "noAuthNoPriv" ))
                 else:
                     if not dev['community']:
+                        raise InvalidParametersError
+                    if len (shlex.split(dev['community'])) >= 2:
                         raise InvalidParametersError
                     ret = execute_cmd("/usr/bin/env php /opt/observium/add_device.php  %s %s" % (dev['ip'], dev['community']))
                 #print ret

@@ -19,6 +19,18 @@ class DeviceReader(object):
                 raise KeyError('id not found')
             result['hostname'] =  ret['hostname']
         return result
+    @classmethod
+    def get_device_by_id(cls, device_id):
+        result = {}
+        with dbutil.Session() as db:
+            ret = db.row(sql="SELECT * FROM devices WHERE `device_id` =  %s", param=(device_id))
+            #print ret
+            if ret is None:
+                LOG.warning('id not found')
+                raise KeyError('id not found')
+            #for dev in ret:
+            result['device_id'] =  ret['device_id']
+        return result
 
     @classmethod
     def get_device_id_by_host(cls, host):
