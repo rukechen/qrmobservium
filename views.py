@@ -18,10 +18,12 @@ app_for_resources = {
 }
 
 api.add_resource(about.About, '/about', resource_class_kwargs=app_for_resources)
+#devices
 api.add_resource(devices.DeviceDataCollecting, '/v1/devices/analysis', resource_class_kwargs=app_for_resources)
 api.add_resource(devices.DeviceUpdate, '/v1/devices/update', resource_class_kwargs=app_for_resources)
 api.add_resource(devices.DeviceManage, '/v1/devices/devicemgt', resource_class_kwargs=app_for_resources)
 api.add_resource(devices.DeviceDetailInfo, '/v1/devices/snmpdetailinfo', resource_class_kwargs=app_for_resources)
+api.add_resource(devices.DeviceStatusList, '/v1/devices/status', resource_class_kwargs=app_for_resources)
 
 #network related
 api.add_resource(devices.DeviceNetworkInfo, '/v1/devices/networkinfo/<string:device_id>', resource_class_kwargs=app_for_resources)

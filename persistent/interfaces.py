@@ -234,7 +234,26 @@ class DeviceReader(object):
                 metrics.append(metric)
             result['vlan'] = metrics
         return result
+    @classmethod
+    def get_device_available(cls):
+        metrics = []
+        with dbutil.Session() as db:
+            devices = db.all(sql="SELECT `device_id`, `status`, `last_polled` FROM `devices`")
+            for dev in devices:
+                metric = {}
+                if dev["status"] == 1:
+                    last_polled_time = dev["last_polled"]
+                    delta_time = datetime.datetime.now() - last_polled_time
+                    if delta_time.total_seconds() > 600:
+                        metric["status"] = 0
+                    else:
+                        metric["status"] = dev ["status"]
+                else:
+                    metric["status"] = dev ["status"]
+                metric["device_id"] = dev["device_id"]
+                metrics.append(metric)
 
+        return metrics
 
 class DataAnalysisReader(object):
 
@@ -318,8 +337,11 @@ class DataAnalysisReader(object):
         #    result = db.all(sql=sql, param=(device_id, sensor_id, start_time, end_time))
         return result
 
+#class LiveDataReader(object):
 
-
+#    @classmethod
+#    def get_snmp_live_data(cls, device_id, table, metric_id, start_time=None, end_time=None):
+        
 
 
 

@@ -253,7 +253,15 @@ class DeviceVlans(BaseResource):
 
         return mesg, status_codes.HTTP_200_OK
 
-#class  
+class DeviceStatusList(BaseResource):
+    def get(self):
+        try:
+            mesg = self.app.get_device_reader().get_device_available()
+        except Exception as e:
+            LOG.warning('AccessDatabaseError', e)
+            raise AccessDatabaseError
+
+        return mesg, status_codes.HTTP_200_OK
 
 
 
