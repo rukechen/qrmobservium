@@ -1,11 +1,12 @@
 from flask_restful import request, reqparse, abort, fields, marshal
 from qrmobservium.resources.base_resource import BaseResource
-from qrmobservium.common import status_codes
+from qrmobservium.common import status_codes, logger
 from qrmobservium.common.errors import DeviceNotExistError, AccessDatabaseError, DeviceAlreadyExistError, InvalidParametersError
 from qrmobservium.common.utility import is_valid_ip_address
 import rrdtool
 import subprocess, sys, shlex
 
+LOG = logger.Logger(__name__)
 
 device_mgt_parser = reqparse.RequestParser()
 device_mgt_parser.add_argument('jid', type=str, location='json', required=True)
@@ -263,7 +264,21 @@ class DeviceStatusList(BaseResource):
 
         return mesg, status_codes.HTTP_200_OK
 
+class DeviceStatus(BaseResource):
+    def get(self, device_id):
+        try:
+            mesg = self.app.get_device_reader().get_device_available_by_id(device_id)
+            if mesg is None:
+                raise DeviceNotExistError
+        except KeyError as e:
+            raise DeviceNotExistError
+        except DeviceNotExistError:
+            raise
+        except Exception as e:
+            LOG.warning('AccessDatabaseError', e)
+            raise AccessDatabaseError
 
+        return mesg, status_codes.HTTP_200_OK
 
 
 

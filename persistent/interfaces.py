@@ -254,6 +254,26 @@ class DeviceReader(object):
                 metrics.append(metric)
 
         return metrics
+    @classmethod
+    def get_device_available_by_id(cls, device_id):
+        result = {}
+        with dbutil.Session() as db:
+            device = db.row(sql="SELECT `device_id`, `status`, `last_polled` FROM `devices` WHERE `device_id` = %s ", param=(device_id))
+            if device is None:
+                LOG.warning('id not found')
+                raise KeyError('id not found')
+            if device["status"] == 1:
+                last_polled_time = device["last_polled"]
+                delta_time = datetime.datetime.now() - last_polled_time
+                if delta_time.total_seconds() > 600:
+                    result["status"] = 0
+                else:
+                    result["status"] = device ["status"]
+            else:
+                result["status"] = device ["status"]
+            result["device_id"] = device["device_id"]
+
+        return result
 
 class DataAnalysisReader(object):
 
