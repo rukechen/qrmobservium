@@ -1,4 +1,4 @@
-import datetime
+import datetime, time
 from qrmobservium.common import logger
 from qrmobservium.persistent import dbutil
 import simplejson
@@ -274,6 +274,111 @@ class DeviceReader(object):
             result["device_id"] = device["device_id"]
 
         return result
+    @classmethod
+    def get_device_sensors_by_id(cls, device_id):
+        result = []
+        tables = {'processors':'processor', 'mempools':'mempool', 'sensors':'sensor', 'status':'status', "storage":"storage"}
+        with dbutil.Session() as db:
+            ret = db.row(sql="SELECT * FROM devices WHERE `device_id` =  %s", param=(device_id))
+            if ret is None:
+                LOG.warning('id not found')
+                raise KeyError('id not found')
+            for table in tables:
+                #print tables[table]
+                if table == 'sensors':
+                    values = db.all(sql="SELECT " + tables[table] + "_id ," + tables[table] + "_class" + \
+                             " FROM " + table + " WHERE `device_id` = %s", param=(device_id))
+                else:
+                    values = db.all(sql="SELECT " + tables[table] + "_id " + " FROM " + table + " WHERE `device_id` = %s", param=(device_id))
+                if values is None:
+                    LOG.warning('id not found')
+                    raise KeyError('id not found')
+                for val in values:
+                    metric = {}
+                    if table == 'sensors':
+                        metric['sensor_type'] = val['%s_class' % tables[table]]
+                    else:
+                        metric['sensor_type'] = 'unknown'
+                    metric['metric'] = table
+                    metric['%s_id' % tables[table]] = val['%s_id' % tables[table]]
+                    result.append(metric)
+
+        return result
+
+class LiveDataReader(object):
+    @classmethod
+    def get_livedata(cls, device_id, metric, metric_id):
+        result = {}
+        tables = {'processors':'processor', 'mempools':'mempool', 'status':'status', 'sensors':'sensor', "storage":"storage"}
+        with dbutil.Session() as db:
+            #result = db.all(sql="SELECT *, `storage`.`storage_id` AS `storage_id` FROM `storage` WHERE 1 AND (( (`device_id` != '' AND `device_id` IS NOT NULL))) AND `storage`.`device_id` = %s AND `storage`.`storage_ignore` = '0' AND `storage`.`storage_id` = %s", param=(device_id, storage_id))
+            constructmetric = {}
+            if metric  == "processors":
+                value = db.row(sql="SELECT *, " + metric + "." + tables[metric] + "_id AS " + tables[metric] + "_id FROM " + metric + \
+                    " WHERE 1 AND (( (`device_id` != '' AND `device_id` IS NOT NULL))) AND " + metric + ".`device_id` = %s AND " + \
+                    metric + "." + tables[metric] + "_id = %s", param=(device_id, metric_id))
+                if value is None:
+                    LOG.warning('id not found')
+                    raise KeyError('id not found')
+                constructmetric["metric"] = metric
+                constructmetric["value"] = value["%s_usage" % tables[metric]]
+                constructmetric["metric_id"] = metric_id
+                result['time'] = int(time.time())
+                result['metrics'] = constructmetric
+            elif metric == "mempools":
+                constructvalue = {}
+                value = db.row(sql="SELECT *, " + metric + "." + tables[metric] + "_id AS " + tables[metric] + "_id FROM " + metric + \
+                    " WHERE 1 AND (( (`device_id` != '' AND `device_id` IS NOT NULL))) AND " + metric + ".`device_id` = %s AND " + \
+                    metric + "." + tables[metric] + "_deleted = '0' AND " + metric + "." + tables[metric] + "_id = %s", param=(device_id, metric_id))
+                if value is None:
+                    LOG.warning('id not found')
+                    raise KeyError('id not found')
+                constructmetric["metric"] = metric
+                constructmetric["metric_id"] = metric_id
+                constructvalue["mempool_used"] = value["mempool_used"]
+                constructvalue["mempool_total"] = value["mempool_total"]
+                constructvalue["mempool_free"] = value["mempool_free"]
+                constructvalue["mempool_perc"] = value["mempool_perc"]
+                constructmetric["value"] = constructvalue
+                result['time'] = int(time.time())
+                result['metrics'] = constructmetric
+            elif metric == "sensors":
+                value = db.row(sql="SELECT *, " + metric + "." + tables[metric] + "_id AS " + tables[metric] + "_id FROM " + metric + \
+                    " WHERE 1 AND (( (`device_id` != '' AND `device_id` IS NOT NULL))) AND " + metric + ".`device_id` = %s AND " + \
+                    metric + "." + tables[metric] + "_deleted = '0' AND " + metric + "." + tables[metric] + "_id = %s", param=(device_id, metric_id))
+                if value is None:
+                    LOG.warning('id not found')
+                    raise KeyError('id not found')
+                constructvalue = {}
+                constructmetric["metric"] = metric
+                constructmetric["metric_id"] = metric_id
+                constructvalue["sensor_limit_low_warn"] = value ["sensor_limit_low_warn"]
+                constructvalue["sensor_custom_limit"] = value["sensor_custom_limit"]
+                constructvalue["sensor_limit_low"] = value["sensor_limit_low"]
+                constructvalue["sensor_limit"] = value["sensor_limit"]
+                constructvalue["sensor_limit_warn"] = value["sensor_limit_warn"]
+                constructvalue["sensor_value"] = value["sensor_value"]
+                constructmetric["value"] = constructvalue
+                result['time'] = int(time.time())
+                result['metrics'] = constructmetric
+            elif metric == "status":
+                value = db.row(sql="SELECT *, " + metric + "." + tables[metric] + "_id AS " + tables[metric] + "_id FROM " + metric + \
+                    " WHERE 1 AND (( (`device_id` != '' AND `device_id` IS NOT NULL))) AND " + metric + ".`device_id` = %s AND " + \
+                    metric + "." + tables[metric] + "_deleted = '0' AND " + metric + "." + tables[metric] + "_id = %s", param=(device_id, metric_id))
+                if value is None:
+                    LOG.warning('id not found')
+                    raise KeyError('id not found')
+                constructmetric["metric"] = metric
+                constructmetric["metric_id"] = metric_id
+                constructmetric["value"] = value["%s_name" % tables[metric]]
+                result['time'] = int(time.time())
+                result['metrics'] = constructmetric
+            #result = db.all(sql="SELECT *, " + metric + "." + tables[metric] + "_id AS " + tables[metric] + "_id FROM " + metric + \
+            #        " WHERE 1 AND (( (`device_id` != '' AND `device_id` IS NOT NULL))) AND " + metric + ".`device_id` = %s AND " + \
+            #        metric + "." + tables[metric] + "_ignore = '0' AND " + metric + "." + tables[metric] + "_id = %s", param=(device_id, metric_id))
+
+        return result
+
 
 class DataAnalysisReader(object):
 

@@ -2,7 +2,7 @@ from flask import Flask, Blueprint, send_from_directory, make_response, request,
 from flask_cors import CORS
 from flask_restful import Api
 
-from qrmobservium.resources import devices, analysis, about
+from qrmobservium.resources import devices, analysis, about, live_data
 from qrmobservium.common import errors
 from qrmobservium.services.application import Application
 
@@ -25,6 +25,9 @@ api.add_resource(devices.DeviceManage, '/v1/devices/devicemgt', resource_class_k
 api.add_resource(devices.DeviceDetailInfo, '/v1/devices/snmpdetailinfo', resource_class_kwargs=app_for_resources)
 api.add_resource(devices.DeviceStatusList, '/v1/devices/status', resource_class_kwargs=app_for_resources)
 api.add_resource(devices.DeviceStatus, '/v1/devices/status/<string:device_id>', resource_class_kwargs=app_for_resources)
+api.add_resource(devices.DeviceSensors, '/v1/devices/sensors/<string:device_id>', resource_class_kwargs=app_for_resources)
+api.add_resource(live_data.LiveData, '/v1/livedata/<string:device_id>/<string:metric_id>', resource_class_kwargs=app_for_resources)
+
 #network related
 api.add_resource(devices.DeviceNetworkInfo, '/v1/devices/networkinfo/<string:device_id>', resource_class_kwargs=app_for_resources)
 api.add_resource(devices.DeviceArptable, '/v1/devices/arptable/<string:device_id>', resource_class_kwargs=app_for_resources)

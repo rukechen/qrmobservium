@@ -280,6 +280,20 @@ class DeviceStatus(BaseResource):
 
         return mesg, status_codes.HTTP_200_OK
 
+class DeviceSensors(BaseResource):
+    def get(self, device_id):
+        try:
+            mesg = self.app.get_device_reader().get_device_sensors_by_id(device_id)
+            if mesg is None:
+                raise DeviceNotExistError
+        except KeyError as e:
+            raise DeviceNotExistError
+        except DeviceNotExistError:
+            raise
+        except Exception as e:
+            LOG.warning('AccessDatabaseError', e)
+            raise AccessDatabaseError
 
+        return mesg, status_codes.HTTP_200_OK
 
 #class Device

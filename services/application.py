@@ -16,3 +16,6 @@ class Application(object):
     @classmethod
     def get_data_analysis_reader(cls):
         return interfaces.DataAnalysisReader()
+    @classmethod
+    def get_live_data_reader(cls):
+        return interfaces.LiveDataReader()

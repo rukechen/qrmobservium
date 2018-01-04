@@ -9,17 +9,17 @@ QRM_DEBUG = os.getenv('QRMOBSERVIUM_DEBUG', False)
 class Logger(object):
     __metaclass__ = Singleton
 
-    def __init__(self, logger_name='qrmapp'):
+    def __init__(self, logger_name='qrmobservium'):
 
         f = logging.Formatter(fmt='%(levelname)s:\t%(name)s:\t%(asctime)s %(message)s',
             datefmt="%Y-%m-%d %H:%M:%S")
         handlers = [
-            logging.handlers.RotatingFileHandler('qrmapp.log', encoding='utf8', maxBytes=5000000, backupCount=1),
+            logging.handlers.RotatingFileHandler('qrmobservium.log', encoding='utf8', maxBytes=5000000, backupCount=1),
             logging.StreamHandler()
         ]
 
         self._logger_name = logger_name;
-        self._logger = logging.getLogger('qrmapp')
+        self._logger = logging.getLogger('qrmobservium')
 
         # change it to warning when production
         #logging_level = logging.WARNING
