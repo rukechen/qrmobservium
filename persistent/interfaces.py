@@ -425,7 +425,6 @@ class DataAnalysisReader(object):
             elif tables[table] == 'port':
                rrdfile = '/opt/observium/rrd' + '/' + dev_id['hostname'] + '/' + tables[table] + \
                             '-' + str(ret['ifIndex']) + '.rrd'
-            #print rrdfile
             if not os.path.exists(rrdfile):
                 LOG.warning('rrdfile not found')
                 raise KeyError('rrdfile not found')
@@ -433,7 +432,6 @@ class DataAnalysisReader(object):
                 ret = rrdtool.fetch(str(rrdfile), "AVERAGE")
             else:
                 ret = rrdtool.fetch(str(rrdfile), 'AVERAGE', '-s %s' % start_time, '-e %s' % end_time)
-            #print ret
             timestamp = ret[0][0]
             count = 0
             if len (ret[1]) >= 2:
@@ -448,7 +446,8 @@ class DataAnalysisReader(object):
                    data['%s' % timestamp] = value[0]
                else:
                    if len(value) >= 2:
-                       data['%s' % timestamp] = ["%.2f" % detailvalue for detailvalue in value]
+                       #data['%s' % timestamp] = ["%.2f" % if detailvalue else "" for detailvalue in value]
+                       data['%s' % timestamp] = [round(detailvalue,2) if detailvalue else "0.0" for detailvalue in value]
                    else:
                        data['%s' % timestamp] = "%.2f" % value[0]
                count += 1
