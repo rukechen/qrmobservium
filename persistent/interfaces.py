@@ -447,7 +447,7 @@ class DataAnalysisReader(object):
                else:
                    if len(value) >= 2:
                        #data['%s' % timestamp] = ["%.2f" % if detailvalue else "" for detailvalue in value]
-                       data['%s' % timestamp] = [round(detailvalue,2) if detailvalue else "0.0" for detailvalue in value]
+                       data['%s' % timestamp] = [round(detailvalue,2) if detailvalue else 0.0 for detailvalue in value]
                    else:
                        data['%s' % timestamp] = "%.2f" % value[0]
                count += 1
