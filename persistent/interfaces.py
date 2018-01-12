@@ -373,6 +373,21 @@ class LiveDataReader(object):
                 constructmetric["value"] = value["%s_name" % tables[metric]]
                 result['time'] = int(time.time())
                 result['metrics'] = constructmetric
+            elif metric == "storage":
+                value = db.row(sql="SELECT *, " + metric + "." + tables[metric] + "_id AS " + tables[metric] + "_id FROM " + metric + \
+                    " WHERE 1 AND (( (`device_id` != '' AND `device_id` IS NOT NULL))) AND " + metric + ".`device_id` = %s AND " + \
+                    metric + "." + tables[metric] + "_deleted = '0' AND " + metric + "." + tables[metric] + "_id = %s", param=(device_id, metric_id))
+                constructvalue = {}
+                if value is None:
+                    LOG.warning('id not found')
+                    raise KeyError('id not found')
+                constructmetric["metric"] = metric
+                constructmetric["metric_id"] = metric_id
+                constructvalue["storage_used"] = value["storage_used"]
+                constructvalue["storage_size"] = value["storage_size"]
+                constructmetric["value"] = constructvalue
+                result['time'] = int(time.time())
+                result['metrics'] = constructmetric
             #result = db.all(sql="SELECT *, " + metric + "." + tables[metric] + "_id AS " + tables[metric] + "_id FROM " + metric + \
             #        " WHERE 1 AND (( (`device_id` != '' AND `device_id` IS NOT NULL))) AND " + metric + ".`device_id` = %s AND " + \
             #        metric + "." + tables[metric] + "_ignore = '0' AND " + metric + "." + tables[metric] + "_id = %s", param=(device_id, metric_id))
