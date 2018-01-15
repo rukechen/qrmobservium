@@ -286,10 +286,14 @@ class DeviceReader(object):
             for table in tables:
                 #print tables[table]
                 if table == 'sensors':
-                    values = db.all(sql="SELECT " + tables[table] + "_id ," + tables[table] + "_class" + \
-                             " FROM " + table + " WHERE `device_id` = %s", param=(device_id))
+                    values = db.all(sql="SELECT " + tables[table] + "_id ," + tables[table] + "_class," + tables[table] + "_descr"\
+                              + " FROM " + table + " WHERE `device_id` = %s", param=(device_id))
+                elif table == 'ports':
+                    values = db.all(sql="SELECT " + tables[table] + "_id ," + "ifDescr" \
+                              + " FROM " + table + " WHERE `device_id` = %s", param=(device_id))
                 else:
-                    values = db.all(sql="SELECT " + tables[table] + "_id " + " FROM " + table + " WHERE `device_id` = %s", param=(device_id))
+                    values = db.all(sql="SELECT " + tables[table] + "_id ," + tables[table] + "_descr" \
+                              + " FROM " + table + " WHERE `device_id` = %s", param=(device_id))
                 if values is None:
                     LOG.warning('id not found')
                     raise KeyError('id not found')
@@ -299,6 +303,11 @@ class DeviceReader(object):
                         metric['sensor_type'] = val['%s_class' % tables[table]]
                     else:
                         metric['sensor_type'] = 'unknown'
+
+                    if table == 'ports':
+                        metric['name'] = val['ifDescr']
+                    else:
+                        metric['name'] = val['%s_descr' % tables[table]]
                     metric['metric'] = table
                     metric['%s_id' % tables[table]] = val['%s_id' % tables[table]]
                     result.append(metric)
