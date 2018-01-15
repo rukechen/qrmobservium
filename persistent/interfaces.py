@@ -277,7 +277,7 @@ class DeviceReader(object):
     @classmethod
     def get_device_sensors_by_id(cls, device_id):
         result = []
-        tables = {'processors':'processor', 'mempools':'mempool', 'sensors':'sensor', 'status':'status', "storage":"storage"}
+        tables = {'processors':'processor', 'mempools':'mempool', 'sensors':'sensor', 'status':'status', "storage":"storage", "ports":"port"}
         with dbutil.Session() as db:
             ret = db.row(sql="SELECT * FROM devices WHERE `device_id` =  %s", param=(device_id))
             if ret is None:
