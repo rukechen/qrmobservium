@@ -309,7 +309,7 @@ class DeviceReader(object):
                     else:
                         metric['name'] = val['%s_descr' % tables[table]]
                     metric['metric'] = table
-                    metric['%s_id' % tables[table]] = val['%s_id' % tables[table]]
+                    metric['metric_id'] = val['%s_id' % tables[table]]
                     result.append(metric)
 
         return result
