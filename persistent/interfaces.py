@@ -51,10 +51,17 @@ class DeviceReader(object):
         metrics = []
         tables = {'processors': 'processor', 'mempools': 'mempool', 'printersupplies': 'supply', 'sensors': 'sensor', 'storage': 'storage'}
         with dbutil.Session() as db:
+            ret = db.row(sql="SELECT * FROM devices WHERE `device_id` =  %s", param=(device_id))
+            if ret is None:
+                LOG.warning('id not found')
+                raise KeyError('id not found')
             for table in tables:
                 metrics_id = []
                 metric = {}
                 ret = db.all(sql="SELECT * FROM " + table+ " WHERE `device_id` =  %s", param=(device_id))
+                mac = db.row(sql="SELECT * FROM `devices` AS M LEFT JOIN `ipv4_addresses` AS I ON I.ipv4_address = \
+                 CONVERT(M.hostname USING utf8) COLLATE utf8_unicode_ci LEFT JOIN `ports` AS P ON P.port_id = I.port_id \
+                                WHERE M.`device_id` = %s", param=(device_id))
                 for dev in ret:
                     template = {}
                     template['metric_id'] = dev['%s_id' % tables[table]]
@@ -65,9 +72,9 @@ class DeviceReader(object):
                 metric['metrics_id'] = metrics_id
 
                 metrics.append(metric)
+                result['ifPhysAddress'] = mac['ifPhysAddress']
                 result['device_id'] = device_id
                 result['metrics'] = metrics
-            print simplejson.dumps(result)
             
         return result
 
