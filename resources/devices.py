@@ -25,6 +25,10 @@ device_fdb_parser = reqparse.RequestParser()
 device_fdb_parser.add_argument('page', type=int, location='args', default=1)
 device_fdb_parser.add_argument('limit', type=int, location='args', default=50)
 
+device_list_parser = reqparse.RequestParser()
+device_list_parser.add_argument('page', type=int, location='args', default=1)
+device_list_parser.add_argument('limit', type=int, location='args', default=50)
+
 def execute_cmd(cmd):
     try:
         #print cmd
@@ -250,6 +254,19 @@ class DeviceVlans(BaseResource):
         except KeyError as e:
             raise DeviceNotExistError
         except Exception as e:
+            raise AccessDatabaseError
+
+        return mesg, status_codes.HTTP_200_OK
+
+class DeviceList(BaseResource):
+
+    def get(self):
+        args = device_list_parser.parse_args()
+
+        try:
+            mesg = self.app.get_device_reader().get_devices(args['page'], args['limit'])
+        except Exception as e:
+            LOG.warning('AccessDatabaseError', e)
             raise AccessDatabaseError
 
         return mesg, status_codes.HTTP_200_OK

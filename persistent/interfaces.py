@@ -44,7 +44,25 @@ class DeviceReader(object):
             #for dev in ret:
             result['device_id'] =  ret['device_id']
         return result
-        
+    @classmethod
+    def get_devices(cls, cur_page=1, page_size=50):
+        result = {}
+        metrics = []
+        with dbutil.Session() as db:
+            count = db.one(sql="SELECT count(*) FROM `devices`")
+            result['total'] = count
+            devices = db.all(sql="SELECT * FROM `devices` LIMIT %s,%s", param=((cur_page-1)*page_size, page_size))
+            for dev in devices:
+                metric = {}
+                metric['device_id'] = dev['device_id']
+                metric['hostname'] = dev['hostname']
+                metric['device_ip'] = dev['hostname']
+                metric['os'] = dev['os']
+                metric['status'] = dev['status']
+                metrics.append(metric)
+            result['datas'] = metrics
+            return result
+
     @classmethod
     def get_device_detail_by_id(cls, device_id):
         result = {}
