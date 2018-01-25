@@ -56,25 +56,26 @@ class DeviceReader(object):
                 LOG.warning('id not found')
                 raise KeyError('id not found')
             for table in tables:
-                metrics_id = []
-                metric = {}
                 ret = db.all(sql="SELECT * FROM " + table+ " WHERE `device_id` =  %s", param=(device_id))
                 mac = db.row(sql="SELECT * FROM `devices` AS M LEFT JOIN `ipv4_addresses` AS I ON I.ipv4_address = \
                  CONVERT(M.hostname USING utf8) COLLATE utf8_unicode_ci LEFT JOIN `ports` AS P ON P.port_id = I.port_id \
                                 WHERE M.`device_id` = %s", param=(device_id))
                 for dev in ret:
                     template = {}
-                    template['metric_id'] = dev['%s_id' % tables[table]]
-                    template['metric_descr'] = dev['%s_descr' % tables[table]]
-                
-                    metrics_id.append(template)
-                metric['table_name'] = table
-                metric['metrics_id'] = metrics_id
-
-                metrics.append(metric)
+                    metadata = {}
+                    template['sensor_name'] = dev['%s_descr' % tables[table]]
+                    metadata['metric_id'] = dev['%s_id' % tables[table]]
+                    metadata['sensor_table'] = table
+                    if table == 'sensors':
+                        metadata['sensor_type'] = dev['%s_class' % tables[table]]
+                    else:
+                        metadata['sensor_type'] = table
+                    template['metadata'] = metadata
+                    metrics.append(template)
+ 
                 result['ifPhysAddress'] = mac['ifPhysAddress']
                 result['device_id'] = device_id
-                result['metrics'] = metrics
+                result['sensor'] = metrics
             
         return result
 
