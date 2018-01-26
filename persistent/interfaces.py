@@ -59,6 +59,7 @@ class DeviceReader(object):
                 metric['device_ip'] = dev['hostname']
                 metric['os'] = dev['os']
                 metric['status'] = dev['status']
+                metric['mgmt_tech'] = 'SNMP'
                 metrics.append(metric)
             result['datas'] = metrics
             return result
