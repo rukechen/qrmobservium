@@ -430,6 +430,52 @@ class LiveDataReader(object):
 
         return result
 
+    @classmethod
+    def get_livedata_by_sensor_table(cls, device_id, sensor_table):
+        result = {}
+        tables = {'processors':'processor', 'mempools':'mempool', 'status':'status', 'sensors':'sensor', "storage":"storage"}
+        with dbutil.Session() as db:
+            #result = db.all(sql="SELECT *, `storage`.`storage_id` AS `storage_id` FROM `storage` WHERE 1 AND (( (`device_id` != '' AND `device_id` IS NOT NULL))) AND `storage`.`device_id` = %s AND `storage`.`storage_ignore` = '0' AND `storage`.`storage_id` = %s", param=(device_id, storage_id))
+            constructmetric = {}
+            if sensor_table  == "processors":
+                print 'step 1'
+                sqlstring = "SELECT  " + sensor_table + "." + tables[sensor_table] + "_usage AS " +  "value " + "," + \
+                             sensor_table + "." + tables[sensor_table] + "_id AS " + "metric_id " + "," + \
+                             sensor_table + "." + tables[sensor_table] + "_descr AS " +  "name " + " FROM " + sensor_table + \
+                    " WHERE 1 AND (( (`device_id` != '' AND `device_id` IS NOT NULL))) AND " + sensor_table + ".`device_id` = %s"
+                values = db.all(sql = sqlstring, param=device_id )
+                if values is None:
+                    LOG.warning('id not found')
+                    raise KeyError('id not found')
+                result['time'] = int(time.time())
+                result['metrics'] = values
+            elif sensor_table == "mempools":
+                sqlstring = "SELECT  " + sensor_table + "." + tables[sensor_table] + "_used " + "," + \
+                             sensor_table + "." + tables[sensor_table] + "_total " + "," + \
+                             sensor_table + "." + tables[sensor_table] + "_free " + "," + \
+                             sensor_table + "." + tables[sensor_table] + "_perc " + "," + \
+                             sensor_table + "." + tables[sensor_table] + "_id AS " + "metric_id " + "," + \
+                             sensor_table + "." + tables[sensor_table] + "_descr AS " + "name " + " FROM " + sensor_table + \
+                    " WHERE 1 AND (( (`device_id` != '' AND `device_id` IS NOT NULL))) AND " + sensor_table + ".`device_id` = %s"
+                values = db.all(sql = sqlstring, param=device_id )
+                if values is None:
+                    LOG.warning('id not found')
+                    raise KeyError('id not found')
+                result['time'] = int(time.time())
+                result['metrics'] = values
+            elif sensor_table == "storage":
+                sqlstring = "SELECT  " + sensor_table + "." + tables[sensor_table] + "_used " + "," + \
+                             sensor_table + "." + tables[sensor_table] + "_size " + "," + \
+                             sensor_table + "." + tables[sensor_table] + "_id AS " + "metric_id " + "," + \
+                             sensor_table + "." + tables[sensor_table] + "_descr AS " + "name " + " FROM " + sensor_table + \
+                    " WHERE 1 AND (( (`device_id` != '' AND `device_id` IS NOT NULL))) AND " + sensor_table + ".`device_id` = %s"
+                values = db.all(sql = sqlstring, param=device_id ) 
+                if values is None:
+                    LOG.warning('id not found')
+                    raise KeyError('id not found')
+                result['time'] = int(time.time())
+                result['metrics'] = values
+        return result
 
 class DataAnalysisReader(object):
 

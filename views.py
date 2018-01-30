@@ -28,6 +28,7 @@ api.add_resource(devices.DeviceStatusList, '/v1/devices/status', resource_class_
 api.add_resource(devices.DeviceStatus, '/v1/devices/status/<string:device_id>', resource_class_kwargs=app_for_resources)
 api.add_resource(devices.DeviceSensors, '/v1/devices/sensors/<string:device_id>', resource_class_kwargs=app_for_resources)
 api.add_resource(live_data.LiveData, '/v1/livedata/<string:device_id>/<string:metric_id>', resource_class_kwargs=app_for_resources)
+api.add_resource(live_data.LiveDataSensorTable, '/v1/livedata/<string:device_id>', resource_class_kwargs=app_for_resources)
 
 #network related
 api.add_resource(devices.DeviceNetworkInfo, '/v1/devices/networkinfo/<string:device_id>', resource_class_kwargs=app_for_resources)
