@@ -7,7 +7,7 @@ from qrmobservium.common import logger
 LOG = logger.Logger(__name__)
 # request
 livedata_parser = reqparse.RequestParser()
-livedata_parser.add_argument('metric', type=unicode, location='args', default=None)
+livedata_parser.add_argument('sensor_table', type=unicode, location='args', default=None)
 
 
 livedatasensortable_parser = reqparse.RequestParser()
@@ -18,7 +18,7 @@ class LiveData(BaseResource):
         mesg = {}
         args = livedata_parser.parse_args()
         try:
-            mesg = self.app.get_live_data_reader().get_livedata(device_id, args['metric'], metric_id)
+            mesg = self.app.get_live_data_reader().get_livedata(device_id, args['sensor_table'], metric_id)
         except KeyError as e:
             raise DeviceNotExistError
         except Exception as e:
