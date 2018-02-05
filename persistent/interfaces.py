@@ -261,6 +261,81 @@ class DeviceReader(object):
                 metrics.append(metric)
             result['vlan'] = metrics
         return result
+
+    @classmethod
+    def get_device_summary(cls):
+        result = {}
+        with dbutil.Session() as db:
+            metric = {}
+            metadata = {}
+            metric["total"] = db.one(sql="SELECT count(*) FROM `devices`")
+            metadata["up"] = db.one(sql="SELECT count(*) FROM `devices` WHERE status = 1 AND disabled = 0")
+            metadata["down"] = db.one(sql="SELECT count(*) FROM `devices` WHERE status = 0 AND disabled = 0")
+            metadata["disabled"] = db.one(sql="SELECT count(*) FROM `devices` WHERE disabled = 1 ")
+            metric["metadata"] = metadata
+            result["devices"] = metric
+
+            metric = {}
+            metadata = {}
+            metric["total"] = db.one(sql="SELECT count(*) FROM `ports` WHERE 1 \
+                            AND (( (`device_id` != '' AND `device_id` IS NOT NULL)) OR ((`port_id` != '' AND `port_id` IS NOT NULL))) \
+                            AND `deleted` = 0 AND `ignore` = 0")
+            metadata["shutdown"] = db.one(sql="SELECT count(*) FROM `ports` WHERE 1 \
+                            AND (( (`device_id` != '' AND `device_id` IS NOT NULL)) OR ((`port_id` != '' AND `port_id` IS NOT NULL))) \
+                            AND `deleted` = 0 AND `ignore` = 0 \
+                            AND `ifAdminStatus` = %s", param=("down"))
+            metadata["down"] = db.one(sql="SELECT count(*) FROM `ports` WHERE 1 \
+                            AND (( (`device_id` != '' AND `device_id` IS NOT NULL)) OR ((`port_id` != '' AND `port_id` IS NOT NULL))) \
+                            AND `deleted` = 0 AND `ignore` = 0 \
+                            AND `ifAdminStatus` = %s AND `ifOperStatus` IN (%s, %s) \
+                            AND `ports`.`disabled` = '0' AND `ports`.`deleted` = '0'", param=("up","down","lowerLayerDown"))
+            metadata["up"] = db.one(sql="SELECT count(*) FROM `ports` WHERE 1 \
+                            AND (( (`device_id` != '' AND `device_id` IS NOT NULL)) OR ((`port_id` != '' AND `port_id` IS NOT NULL))) \
+                            AND `deleted` = 0 AND `ignore` = 0 \
+                            AND `ifAdminStatus` = %s AND `ifOperStatus` IN (%s, %s, %s) \
+                            AND `ports`.`disabled` = '0' AND `ports`.`deleted` = '0'", param=("up","up","testing", "monitoring"))
+            metric["metadata"] = metadata
+            result["ports"] = metric
+
+            metric = {}
+            metadata = {}
+            metric["total"] = db.one(sql="SELECT count(*) FROM `sensors` WHERE 1 \
+                            AND (( (`device_id` != '' AND `device_id` IS NOT NULL)) OR ((`sensor_id` != '' AND `sensor_id` IS NOT NULL))) \
+                            AND `sensor_deleted` = 0 AND `sensor_ignore` = 0 ")
+            metadata["ok"] = db.one(sql="SELECT count(*) FROM `sensors` WHERE 1 \
+                            AND (( (`device_id` != '' AND `device_id` IS NOT NULL)) OR ((`sensor_id` != '' AND `sensor_id` IS NOT NULL))) \
+                            AND `sensor_deleted` = 0 AND `sensor_ignore` = 0 AND `sensor_disable` = 0 \
+                            AND `sensor_event` = %s", param=("ok"))
+            metadata["down"] = db.one(sql="SELECT count(*) FROM `sensors` WHERE 1 \
+                            AND (( (`device_id` != '' AND `device_id` IS NOT NULL)) OR ((`sensor_id` != '' AND `sensor_id` IS NOT NULL))) \
+                            AND `sensor_deleted` = 0 AND `sensor_ignore` = 0 AND `sensor_disable` = 0 \
+                            AND `sensor_event` NOT IN (%s)", param=("ok"))
+            metadata["disabled"] = db.one(sql="SELECT count(*) FROM `sensors` WHERE 1 \
+                            AND (( (`device_id` != '' AND `device_id` IS NOT NULL)) OR ((`sensor_id` != '' AND `sensor_id` IS NOT NULL))) \
+                            AND `sensor_deleted` = 0 AND `sensor_disable` = 1")
+            metric["metadata"] = metadata
+            result["sensors"] = metric
+
+            metric = {}
+            metadata = {}
+            metric["total"] = db.one(sql="SELECT count(*) FROM `status` WHERE 1 \
+                            AND (( (`device_id` != '' AND `device_id` IS NOT NULL)) OR ((`status_id` != '' AND `status_id` IS NOT NULL))) \
+                            AND `status_deleted` = 0 AND `status_ignore` = 0 ")
+            metadata["ok"] = db.one(sql="SELECT count(*) FROM `status` WHERE 1 \
+                            AND (( (`device_id` != '' AND `device_id` IS NOT NULL)) OR ((`status_id` != '' AND `status_id` IS NOT NULL))) \
+                            AND `status_deleted` = 0 AND `status_ignore` = 0 AND `status_disable` = 0 \
+                            AND `status_event` IN (%s, %s)", param=("ok", "warning"))
+            metadata["alert"] = db.one(sql="SELECT count(*) FROM `status` WHERE 1 \
+                            AND (( (`device_id` != '' AND `device_id` IS NOT NULL)) OR ((`status_id` != '' AND `status_id` IS NOT NULL))) \
+                            AND `status_deleted` = 0 AND `status_ignore` = 0 AND `status_disable` = 0 \
+                            AND `status_event` NOT IN (%s, %s)", param=("ok", "warning"))
+            metadata["disabled"] = db.one(sql="SELECT count(*) FROM `status` WHERE 1 \
+                            AND (( (`device_id` != '' AND `device_id` IS NOT NULL)) OR ((`status_id` != '' AND `status_id` IS NOT NULL))) \
+                            AND `status_deleted` = 0 AND `status_ignore` = 0 AND `status_disable` = 1")
+            metric["metadata"] = metadata
+            result["status"] = metric
+        return result
+
     @classmethod
     def get_device_available(cls):
         metrics = []
@@ -438,7 +513,6 @@ class LiveDataReader(object):
             #result = db.all(sql="SELECT *, `storage`.`storage_id` AS `storage_id` FROM `storage` WHERE 1 AND (( (`device_id` != '' AND `device_id` IS NOT NULL))) AND `storage`.`device_id` = %s AND `storage`.`storage_ignore` = '0' AND `storage`.`storage_id` = %s", param=(device_id, storage_id))
             constructmetric = {}
             if sensor_table  == "processors":
-                print 'step 1'
                 sqlstring = "SELECT  " + sensor_table + "." + tables[sensor_table] + "_usage AS " +  "value " + "," + \
                              sensor_table + "." + tables[sensor_table] + "_id AS " + "metric_id " + "," + \
                              sensor_table + "." + tables[sensor_table] + "_descr AS " +  "name " + " FROM " + sensor_table + \

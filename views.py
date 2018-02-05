@@ -23,6 +23,7 @@ api.add_resource(devices.DeviceDataCollecting, '/v1/devices/analysis', resource_
 api.add_resource(devices.DeviceUpdate, '/v1/devices/update', resource_class_kwargs=app_for_resources)
 api.add_resource(devices.DeviceManage, '/v1/devices/devicemgt', resource_class_kwargs=app_for_resources)
 api.add_resource(devices.DeviceDetailInfo, '/v1/devices/snmpdetailinfo', resource_class_kwargs=app_for_resources)
+api.add_resource(devices.DeviceSummary, '/v1/devices/summary', resource_class_kwargs=app_for_resources)
 api.add_resource(devices.DeviceList, '/v1/devices', resource_class_kwargs=app_for_resources)
 api.add_resource(devices.DeviceStatusList, '/v1/devices/status', resource_class_kwargs=app_for_resources)
 api.add_resource(devices.DeviceStatus, '/v1/devices/status/<string:device_id>', resource_class_kwargs=app_for_resources)
