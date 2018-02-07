@@ -19,3 +19,6 @@ class Application(object):
     @classmethod
     def get_live_data_reader(cls):
         return interfaces.LiveDataReader()
+    @classmethod
+    def get_event_log_reader(cls):
+        return interfaces.EventLogReader()

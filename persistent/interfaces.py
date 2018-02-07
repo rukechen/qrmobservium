@@ -415,6 +415,49 @@ class DeviceReader(object):
                     result.append(metric)
 
         return result
+class EventLogReader(object):
+    @classmethod
+    def get_eventlog(cls, start_time=None, end_time=None):
+        result = {}
+        with dbutil.Session() as db:
+            print start_time
+            print end_time
+            #timezone = db.row(sql="SELECT EXTRACT(HOUR FROM (TIMEDIFF(NOW(), UTC_TIMESTAMP))) AS `timezone`")
+            #if timezone['timezone'] > 0:
+            #    timezone = "+%s:00" % timezone['timezone']
+            #else:
+            #    timezone = "%s:00" % timezone['timezone']
+            if start_time and end_time:
+                #sql = "SELECT `eventlog`.*, CONVERT_TZ(`eventlog`.`timestamp`, %s, %s) as `unixtime`, \
+                #      `devices`.`hostname` FROM `eventlog` LEFT JOIN `devices` ON `eventlog`.device_id = `devices`.device_id \
+                #      WHERE timestamp BETWEEN %s AND %s"
+
+                sql = "SELECT `eventlog`.`device_id`, `eventlog`.`event_id`, `eventlog`.`message`, `eventlog`.`entity_type`,\
+                      `eventlog`.`entity_id`, `eventlog`.`severity`,\
+                      UNIX_TIMESTAMP(`eventlog`.`timestamp`) as `unixtime`,\
+                      DATE_FORMAT(`eventlog`.`timestamp`, '%%Y-%%m-%%d %%H:%%i:%%S') as date_time , \
+                      `devices`.`hostname` FROM `eventlog` LEFT JOIN `devices` ON `eventlog`.`device_id` = `devices`.`device_id` \
+                      WHERE `eventlog`.`timestamp` BETWEEN FROM_UNIXTIME(%s) AND FROM_UNIXTIME(%s)"
+                result = db.all(sql=sql, param=(start_time, end_time))
+            else:
+                #sql = "SELECT `eventlog`.`device_id`,`eventlog`.`event_id`, `eventlog`.`message`, `eventlog`.`entity_type`, \
+                #      `eventlog`.`entity_id`, `eventlog`.`severity`, \
+                #      DATE_FORMAT(`eventlog`.`timestamp`, '%%Y-%%m-%%d %%H:%%i:%%S') as timestamp ,\
+                #       UNIX_TIMESTAMP(CONVERT_TZ(`eventlog`.`timestamp`, %s, %s) as `unixtime`, \
+                #      `devices`.`hostname` FROM `eventlog` LEFT JOIN `devices` ON `eventlog`.device_id = `devices`.device_id \
+                #      ORDER BY `event_id` DESC LIMIT 0,15"
+                #sql = "SELECT `eventlog`.*, CONVERT_TZ(`eventlog`.`timestamp`, %s, %s) as `unixtime`,\
+                #      `devices`.`hostname` FROM `eventlog` LEFT JOIN `devices` ON `eventlog`.device_id = `devices`.device_id \
+                #      ORDER BY `event_id` DESC LIMIT 0,15"
+                sql = "SELECT `eventlog`.`device_id`, `eventlog`.`event_id`, `eventlog`.`message`, `eventlog`.`entity_type`,\
+                      `eventlog`.`entity_id`, `eventlog`.`severity`,\
+                      UNIX_TIMESTAMP(`eventlog`.`timestamp`) as `unixtime`,\
+                      DATE_FORMAT(`eventlog`.`timestamp`, '%Y-%m-%d %H:%i:%S') as date_time ,\
+                      `devices`.`hostname` FROM `eventlog` LEFT JOIN `devices` ON `eventlog`.`device_id` = `devices`.`device_id` \
+                      ORDER BY `event_id` DESC LIMIT 0,15"
+                result = db.all(sql=sql)
+
+        return result
 
 class LiveDataReader(object):
     @classmethod
