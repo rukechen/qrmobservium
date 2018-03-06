@@ -22,3 +22,6 @@ class Application(object):
     @classmethod
     def get_event_log_reader(cls):
         return interfaces.EventLogReader()
+    @classmethod
+    def get_alert_log_reader(cls):
+        return interfaces.AlertLogReader()

@@ -2,7 +2,7 @@ from flask import Flask, Blueprint, send_from_directory, make_response, request,
 from flask_cors import CORS
 from flask_restful import Api
 
-from qrmobservium.resources import devices, analysis, about, live_data, event_logs
+from qrmobservium.resources import devices, analysis, about, live_data, event_logs, alert_logs
 from qrmobservium.common import errors
 from qrmobservium.services.application import Application
 
@@ -44,4 +44,7 @@ api.add_resource(analysis.AnalysisSNMPHistory, '/v1/analysis/snmp/<string:device
 
 #eventlog
 api.add_resource(event_logs.EventLogs, '/v1/eventlogs', resource_class_kwargs=app_for_resources)
+
+#alertlog
+api.add_resource(alert_logs.AlertLogs, '/v1/alertlogs', resource_class_kwargs=app_for_resources)
 

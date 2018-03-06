@@ -415,6 +415,115 @@ class DeviceReader(object):
                     result.append(metric)
 
         return result
+
+class AlertLogReader(object):
+    @classmethod
+    def get_snmp_alertlog(cls, device_id=None, sensor_id=None, alert_status=None,
+        start_time="", end_time="", cur_page=1, page_size=2, order_by=None, sort=None):
+        #ToDo: query by sensor_id, and sensor_type. (Maybe same sesnor_id but different sensor_type)
+        translate_to_table = {'processor':'processors', 'mempool':'mempools', 'sensor':'sensors', 'status':'status', "storage":"storage", "port":"ports"}
+        filter_cmd = ""
+        filter_params = []
+        result = {}
+        datas = []
+        cache_entity_type_and_id_list = []
+        cache_alert_table = []
+        print device_id
+        with dbutil.Session() as db:
+            alert_logs = []
+            typesql = "SELECT DISTINCT entity_type,entity_id from alert_log"
+            e_types = db.all(sql=typesql)
+            alertstatussql = "SELECT alert_test_id,entity_id, entity_type,alert_status from alert_table"
+            cache_alert_table = db.all(sql=alertstatussql)
+            if start_time:
+                filter_cmd = " AND timestamp between FROM_UNIXTIME(%s) and FROM_UNIXTIME(%s) "
+                filter_params.append(start_time)
+                filter_params.append(end_time)
+            else:
+                filter_cmd = "AND timestamp is not NULL "
+            if device_id:
+                filter_cmd = filter_cmd + " and alert_log.device_id = %s "
+                filter_params.append(device_id)
+
+            order_cmd = " ORDER BY "
+            order_cmd = order_cmd + "on_time DESC"
+            csql = "SELECT count(alert_log.entity_id), timestamp as on_time FROM `alert_log` WHERE `log_type` = 2 AND alert_test_id IN (SELECT alert_test_id from alert_tests)" + filter_cmd
+            sql = "SELECT alert_log.event_id, alert_log.entity_id, alert_log.entity_type, alert_log.alert_test_id, alert_log.device_id, DATE_FORMAT(`alert_log`.`timestamp`, '%%Y-%%m-%%d %%H:%%i:%%S')as on_time, B.conditions, B.alert_name, C.hostname FROM `alert_log` LEFT JOIN `alert_tests` AS B ON alert_log.alert_test_id = B.alert_test_id LEFT JOIN `devices` as C on alert_log.device_id = C.device_id WHERE `log_type` = 2 AND B.alert_test_id IN (SELECT alert_test_id from alert_tests)" + filter_cmd + order_cmd + " LIMIT %s, %s"
+            total = db.one(sql=csql, param=filter_params)
+            filter_params.append((cur_page-1)*page_size)
+            filter_params.append(page_size)
+            ret = db.all(sql = sql , param=filter_params )
+            alert_logs.extend(ret)
+            for e_type in e_types:
+                if e_type['entity_type'] == 'port':
+                    descr = 'ifDescr'
+                else:
+                    descr= '%s_descr' % e_type['entity_type']
+                sensor_id = str('%s_id' % e_type['entity_type'])
+                detailsql = "SELECT `%s` as name, `%s` as sensor_id FROM `%s` WHERE `%s` = %s" % (descr , sensor_id ,translate_to_table[e_type['entity_type']], sensor_id, e_type['entity_id'])
+                ret = db.row(sql = detailsql)
+                cache_entity_type_and_id_list.append(ret)
+
+            for alert_log in alert_logs:
+                for cache_list in cache_entity_type_and_id_list:
+                    if alert_log['entity_id'] == cache_list['sensor_id']:
+                        alert_log['name'] = cache_list['name']
+                for cache_list in cache_alert_table:
+                    if alert_log['entity_id'] == cache_list['entity_id'] and alert_log['entity_type'] == cache_list['entity_type']:
+                        alert_log['alert_status'] = cache_list['alert_status']
+
+            result['total'] = total
+            result['datas'] = alert_logs
+
+        return result
+
+
+    @classmethod
+    def get_snmp_alertlog_match_qrmplus(cls, device_id=None, sensor_id=None, alert_status=None,
+        start_time="", end_time="", cur_page=1, page_size=20, order_by=None, sort=None):
+        filter_cmd = ""
+        filter_params = []
+        result = {}
+        datas = []
+        processor_list = []
+        port_list = []
+        #step 1, get DISTINCT entity_type,entity_id
+        typesql = "SELECT DISTINCT entity_type,entity_id from alert_log"
+        if device_id:
+            filter_cmd = filter_cmd + " and alert_log.device_id = %s "
+            filter_params.append(device_id)
+        order_cmd = " ORDER BY "
+        if order_by:
+            if sort:
+                order_cmd = order_cmd + order_by + " " + sort + ", "
+            else:
+                order_cmd = order_cmd + order_by + " , "
+
+        order_cmd = order_cmd + "on_time DESC"
+
+        sql = "SELECT alert_log.entity_id, alert_log.entity_type, alert_log.alert_test_id, alert_log.device_id, alert_log.timestamp as on_time, B.conditions, C.hostname FROM `alert_log` LEFT JOIN `alert_tests` AS B ON alert_log.alert_test_id = B.alert_test_id LEFT JOIN `devices` as C on alert_log.device_id = C.device_id WHERE `log_type` = 2 AND B.alert_test_id IN (SELECT alert_test_id from alert_tests) " + filter_cmd
+        with dbutil.Session() as db:
+            e_types = db.all(sql=typesql)
+            alert_logs = [] 
+            for e_type in e_types:
+                ret = db.all(sql = sql + " " + "AND alert_log.entity_type="+"'" +e_type['entity_type']+ "'" + " " + "AND alert_log.entity_id=" + str(e_type['entity_id']) + order_cmd, param=filter_params )
+                if ret:
+                    alert_logs.extend(ret)
+                for i in range(len(alert_logs)):
+                    data = {}
+                    if len(alert_logs) > (i + 1):
+                        ret = db.row(sql= "SELECT * FROM `alert_log` WHERE `entity_id` = "  + str(e_type['entity_id']) + " AND `log_type` = 5 AND `entity_type`=" + "'" + e_type['entity_type'] + "'" + " AND `timestamp` BETWEEN %s and %s", param=(alert_logs[i]['on_time'], alert_logs[i+1]['on_time']))
+                        if ret:
+                            alert_logs[i]['off_time'] = ret['timestamp']
+                            alert_logs[i]['alert_status'] = '0' 
+                    else:
+                        alert_logs[i]['off_time'] = "N/A"
+                        alert_logs[i]['alert_status'] = '1'
+            result['datas'] = alert_logs
+            
+        return result
+
+
 class EventLogReader(object):
     @classmethod
     def get_eventlog(cls, start_time=None, end_time=None):
