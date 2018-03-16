@@ -25,3 +25,9 @@ class Application(object):
     @classmethod
     def get_alert_log_reader(cls):
         return interfaces.AlertLogReader()
+    @classmethod
+    def get_alert_setting_reader(cls):
+        return interfaces.AlertReader()
+    @classmethod
+    def get_alert_setting_writer(cls):
+        return interfaces.AlertWriter()

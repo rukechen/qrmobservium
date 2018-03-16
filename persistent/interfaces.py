@@ -3,6 +3,7 @@ from qrmobservium.common import logger
 from qrmobservium.persistent import dbutil
 import simplejson
 import rrdtool, re, os
+from collections import defaultdict
 LOG = logger.Logger(__name__)
 
 
@@ -13,7 +14,6 @@ class DeviceReader(object):
         result = {}
         with dbutil.Session() as db:
             ret = db.row(sql="SELECT * FROM devices WHERE `device_id` =  %s", param=(device_id))
-            print ret
             if ret is None:
                 LOG.warning('id not found')
                 raise KeyError('id not found')
@@ -415,6 +415,304 @@ class DeviceReader(object):
                     result.append(metric)
 
         return result
+
+class AlertReader(object):
+    @classmethod
+    def get_alert_settings(cls, cur_page=1, page_size=2):
+        result = {}
+        filter_params = []
+        with dbutil.Session() as db:
+            csql = "SELECT COUNT(alert_tests.alert_test_id) FROM alert_tests"
+            result['total'] = db.one(sql=csql)
+            sql = "SELECT alert_tests.alert_test_id as alert_setting_id, alert_tests.entity_type, alert_name, alert_message,conditions FROM alert_tests LIMIT %s, %s"
+            assocsql = "SELECT * FROM `alert_assoc` WHERE 1 AND alert_test_id= %s"
+            devsql = "SELECT DISTINCT(device_id) FROM `alert_table` WHERE 1 AND alert_test_id= %s"
+            filter_params.append((cur_page-1)*page_size)
+            filter_params.append(page_size)
+            alert_settings = db.all(sql=sql, param=filter_params)
+            for alert_setting in alert_settings:
+                alert_assocs = []
+                alert_assoc = {}
+                #Only support first entity_attribs
+                assocs = db.row(sql=assocsql, param= alert_setting['alert_setting_id'])
+                alert_assoc['alert_assoc_id'] = assocs['alert_assoc_id']
+                alert_assoc['entity_attribs'] = [simplejson.loads(assocs['entity_attribs'])[0]]
+                alert_assocs.append(alert_assoc)
+                alert_setting['alert_assoc'] = alert_assocs
+
+                conditions = simplejson.loads(alert_setting['conditions'])
+                alert_setting['condition_metric'] = conditions[0]['metric']
+                alert_setting['condition_symbol'] = conditions[0]['condition']
+                alert_setting['condition_value'] = conditions[0]['value']
+                del alert_setting['conditions']
+                devices = db.all(sql=devsql, param= alert_setting['alert_setting_id'])
+                alert_setting['devices'] = devices
+            result['datas']  = alert_settings
+        return result
+class AlertWriter(object):
+    @classmethod
+    def match_device_entities(cls, db, device_id, entity_attribs, entity_type):
+        translate_to_table = {'processor':'processors', 'mempool':'mempools', 'sensor':'sensors', 'status':'status', "storage":"storage", "port":"ports"}
+        filter_params = []
+        sql = "SELECT * from " + translate_to_table[entity_type] + " WHERE device_id = %s"
+        filter_params.append(device_id)
+        for attr in entity_attribs:
+             if attr['condition'] == 'gt' or attr['condition'] == 'greater' or attr['condition'] == '>':
+                 sql= sql + ' AND ' + attr['attrib'] + ' > %s'
+                 filter_params.append(attr['value'])
+             elif attr['condition'] == 'lt' or attr['condition'] == 'less' or attr['condition'] == '<':
+                 sql= sql + ' AND ' + attr['attrib'] + ' < %s'
+                 filter_params.append(attr['value'])
+             elif attr['condition'] == 'equals' or attr['condition'] == 'eq' or attr['condition'] == 'is' or attr['condition'] == '==' or  attr['condition'] == '=':
+                 sql= sql + ' AND ' + attr['attrib'] + ' = %s'
+                 filter_params.append(attr['value'])
+             elif attr['condition'] == 'in':
+                 value = attr['value'].split(',')
+                 sql = sql + " AND " + attr['attrib'] + " IN ('%s')" % ("','".join(str(x) for x in value))
+        #print sql
+        #print filter_params
+        entities = db.all(sql=sql, param=filter_params)
+        return entities
+    @classmethod
+    def getcurrent_alert_table(cls, db):
+        devsql = "SELECT device_id FROM devices"
+        sql = "SELECT * FROM `alert_table`"
+        devices = db.all(sql=devsql)
+        ret = db.all(sql=sql)
+        curr_alert_table = {}
+        result = {}
+        for dev in devices:
+            sql = "SELECT * FROM `alert_table` WHERE device_id = %s"
+            ret = db.all(sql=sql, param = dev['device_id'])
+            curr_alert_table = defaultdict( lambda: defaultdict(lambda: defaultdict( dict )))
+
+            for alert_table in ret:
+                curr_alert_table[alert_table['entity_type']][str(alert_table['entity_id'])][str(alert_table['alert_test_id'])] = alert_table
+
+            result[dev['device_id']] = curr_alert_table
+        return result
+    @classmethod
+    def match_device(cls, db, dev_id, device_attribs):
+        ret = False
+        print device_attribs
+        filter_params = []
+        devcsql = "SELECT COUNT(*) FROM `devices` AS d  WHERE d.`device_id` = %s"
+        filter_params.append(int(dev_id))
+        for attr in device_attribs:
+            if attr['condition'] == 'gt' or attr['condition'] == 'greater' or attr['condition'] == '>':
+                devcsql= devcsql + ' AND `d`.' + attr['attrib'] + ' > %s'
+                filter_params.append(attr['value'])
+            elif attr['condition'] == 'lt' or attr['condition'] == 'less' or attr['condition'] == '<':
+                devcsql= devcsql + ' AND `d`.' + attr['attrib'] + ' < %s'
+                filter_params.append(attr['value'])
+            elif attr['condition'] == 'equals' or attr['condition'] == 'eq' or attr['condition'] == 'is' or attr['condition'] == '==' or  attr['condition'] == '=':
+                devcsql= devcsql + ' AND `d`.' + attr['attrib'] + ' = %s'
+                filter_params.append(attr['value'])
+            elif attr['condition'] == 'in':
+                value = attr['value'].split(',')
+                devcsql = devcsql + ' AND `d`.' + attr['attrib'] + " IN ('%s')" % ("','".join(str(x) for x in value))
+        #print devcsql
+        #print filter_params
+        count = db.one(sql=devcsql, param=filter_params)
+        if count > 0:
+            ret = True
+        else:
+            ret = False
+        return ret
+
+    @classmethod
+    def cache_device_conditions(cls,db,dev_id):
+        result = {}
+        with dbutil.Session() as db:
+            devsql = "SELECT device_id FROM devices"
+            sql = "SELECT * FROM `alert_tests`"
+            assocsql = "SELECT * FROM `alert_assoc`"
+            devices = db.all(sql=devsql)
+            alerts = db.all(sql=sql)
+            assocs = db.all(sql=assocsql)
+            cache_condition = defaultdict( lambda: defaultdict(lambda: defaultdict(lambda: defaultdict( dict ))))
+            cond_new = defaultdict(lambda: defaultdict( dict ))
+            for alert in alerts:
+                cache_condition['cond'][str(alert['alert_test_id'])] = alert
+                cache_condition['cond'][str(alert['alert_test_id'])]['entity_type'] = alert['entity_type']
+                cache_condition['cond'][str(alert['alert_test_id'])]['conditions'] = alert['conditions']
+                cache_condition['cond'][str(alert['alert_test_id'])]['assoc'] = {}
+            for assoc in assocs:
+                cache_condition['assoc'][str(assoc['alert_assoc_id'])] = assoc
+                cache_condition['assoc'][str(assoc['alert_assoc_id'])]['entity_attribs'] = simplejson.loads(assoc['entity_attribs'])
+                cache_condition['assoc'][str(assoc['alert_assoc_id'])]['device_attribs'] = simplejson.loads(assoc['device_attribs'])
+
+            for assoc_id in cache_condition['assoc'].keys():
+                if AlertWriter.match_device(db, dev_id, cache_condition['assoc'][assoc_id]['device_attribs']):
+                    cache_condition['cond'][str(cache_condition['assoc'][assoc_id]['alert_test_id'])]['assoc'][assoc_id] = cache_condition['assoc'][assoc_id]
+                    cond_new['cond'][str(cache_condition['assoc'][assoc_id]['alert_test_id'])] = cache_condition['cond'][str(cache_condition['assoc'][assoc_id]['alert_test_id'])]
+                else:
+                    del cache_condition['assoc'][assoc_id]
+            result = cond_new
+        return result
+
+    @classmethod
+    def update_device_alert_table(cls):
+        result = {}
+        ret = False
+        with dbutil.Session() as db:
+            devsql = "SELECT device_id FROM devices"
+            devices = db.all(sql=devsql)
+            #alert_table = defaultdict( lambda: defaultdict(lambda: defaultdict(lambda: defaultdict( dict ))))
+            #conditions = AlertWriter.cache_device_conditions(db)
+            for dev in devices:
+                conditions = AlertWriter.cache_device_conditions(db, dev['device_id'])
+
+                alert_table = defaultdict( lambda: defaultdict(lambda: defaultdict(lambda: defaultdict( dict ))))
+                for alert_test_id in conditions['cond']:
+                    #print simplejson.dumps(conditions['cond'][alert_test_id])
+                    assocs_tmp = []
+                    for assoc_id in conditions['cond'][alert_test_id]['assoc']:
+                        entities = AlertWriter.match_device_entities(db, dev['device_id'], conditions['cond'][alert_test_id]['assoc'][assoc_id]['entity_attribs'], conditions['cond'][alert_test_id]['assoc'][assoc_id]['entity_type'])
+                        for entity in entities:
+                            if int(assoc_id) not in assocs_tmp:
+                                assocs_tmp.append(int(assoc_id))
+                    for assoc_id in conditions['cond'][alert_test_id]['assoc']:
+                        for entity in entities:
+                             alert_table[conditions['cond'][alert_test_id]['assoc'][assoc_id]['entity_type']]['%s' % entity['%s_id' % conditions['cond'][alert_test_id]['assoc'][assoc_id]['entity_type']]][alert_test_id] = assocs_tmp
+                result[dev['device_id']] = alert_table
+            cur_alert_table = AlertWriter.getcurrent_alert_table(db)
+
+            for dev in result:
+                for entity_type in result[dev]:
+                    for entity_id in result[dev][entity_type]:
+                        for alert_id in result[dev][entity_type][entity_id]:
+                            #print cur_alert_table[entity_type][str(entity_id)][str(alert_id)]
+                            #print 'abc: %s' % cur_alert_table[entity_type][entity_id][alert_id]
+                            if cur_alert_table[dev][entity_type][entity_id][alert_id]:
+                                print 'dev %s alert_assocs %s' % (dev,cur_alert_table[dev][entity_type][entity_id][alert_id]['alert_assocs'])
+                                if ',' in cur_alert_table[dev][entity_type][entity_id][alert_id]['alert_assocs']:
+                                    comparedString = cur_alert_table[dev][entity_type][entity_id][alert_id]['alert_assocs'].split(',')
+                                    comparedString = [ int(tmp) for tmp in comparedString]
+                                    #print 'result %s' % result[dev][entity_type][entity_id][alert_id]
+                                    if not set(comparedString)- set(result[dev][entity_type][entity_id][alert_id]):
+                                        #means data is the same
+                                        del cur_alert_table[dev][entity_type][entity_id][alert_id]
+                                    else:
+                                        #have to update db
+                                        build_assoc_id = ''
+                                        for new_assoc_id in result[dev][entity_type][entity_id][alert_id]:
+                                            if len(result[dev][entity_type][entity_id][alert_id]) > 1:
+                                                build_assoc_id = new_assoc_id + ","
+                                            else:
+                                                build_assoc_id = new_assoc_id
+                                        #print build_assoc_id
+                                        command = "UPDATE alert_table SET alert_assocs=%s WHERE `alert_table_id`= %s"
+                                        ret = db.execute(sql=command, param=(build_assoc_id, cur_alert_table[dev][entity_type][entity_id][alert_id]['alert_table_id']))
+                                else:
+                                    if int(cur_alert_table[dev][entity_type][entity_id][alert_id]['alert_assocs']) == result[dev][entity_type][entity_id][alert_id][0]:
+                                        del cur_alert_table[dev][entity_type][entity_id][alert_id]
+                                    else:
+                                        # single data,have to update db
+                                        command = "UPDATE alert_table SET alert_assocs=%s WHERE `alert_table_id`= %s"
+                                        ret = db.execute(sql=command, param=(build_assoc_id, cur_alert_table[dev][entity_type][entity_id][alert_id]['alert_table_id']))
+
+                            else:
+                                #insertDB
+                                alert_table = {}
+                                alert_table['device_id'] = dev
+                                alert_table['entity_type'] = entity_type
+                                alert_table['entity_id'] = entity_id
+                                alert_table['alert_test_id'] = alert_id
+                                alert_table['alert_assocs'] = result[dev][entity_type][entity_id][alert_id][0]
+                                ret = db.insert('alert_table', alert_table)
+            print 'check cur_table %s' % simplejson.dumps(cur_alert_table)
+            for dev in cur_alert_table:
+                for entity_type in cur_alert_table[dev]:
+                    #print cur_alert_table[dev][entity_type]
+                    for entity_id in cur_alert_table[dev][entity_type]:
+                        for alert_id in cur_alert_table[dev][entity_type][entity_id]:
+                            if 'alert_table_id' in cur_alert_table[dev][entity_type][entity_id][alert_id]:
+                                print 'delete unhandled alert_table'
+                                #db.execute('DELETE FROM alert_setting_devices WHERE alert_setting_id=%(alert_setting_id)s', param=alert_setting)
+                                cmd = "DELETE FROM alert_table WHERE `alert_table_id`=%s"
+                                ret = db.execute(sql=cmd, param=cur_alert_table[dev][entity_type][entity_id][alert_id]['alert_table_id'])
+        return ret
+
+    @classmethod
+    def add_alert_setting(cls, alert_setting=None):
+        result = {}
+        with dbutil.Session() as db:
+            # Insert alert
+            #{"value":"60","condition":"gt","metric":"processor_usage"}
+            build_alert_setting = {}
+            build_alert_assoc = {}
+            build_alert_setting['conditions'] = {'metric': alert_setting['condition_metric'], 'condition': alert_setting['condition_symbol'], 'value': alert_setting['condition_value'], 'attrib':'*'}
+            build_alert_setting['conditions'] = simplejson.dumps([build_alert_setting['conditions']])
+            build_alert_setting['`entity_type`'] = alert_setting['entity_type']
+
+            build_alert_setting['`alert_name`'] = alert_setting['alert_name']
+            build_alert_setting['`alert_message`'] = alert_setting['alert_message']
+            build_alert_setting['severity'] = 'crit'
+            build_alert_setting['suppress_recovery'] = 0
+            build_alert_setting['`and`'] = '1'
+            build_alert_setting['delay'] = '0'
+            build_alert_setting['enable'] = '1'
+
+            devcsql = "SELECT COUNT(device_id) FROM devices"
+            devTotal = db.one(sql=devcsql)
+            if len(alert_setting['devices']) == devTotal:
+                build_alert_assoc['device_attribs'] = simplejson.dumps([{'value':None, 'condition':None, 'attrib':'*', 'metric':alert_setting['condition_metric']}])
+            else:
+                hostname_list = []
+                for dev_id in alert_setting['devices']:
+                    hostname = DeviceReader.get_device_host_by_id(dev_id['device_id'])
+                    hostname_list.append("{}".format(hostname['hostname']))
+                build_hostname_list = "{}".format(','.join(hostname_list))
+                build_alert_assoc['device_attribs'] = simplejson.dumps([{'value':build_hostname_list, 'condition':'in', 'attrib':'hostname', 'metric':alert_setting['condition_metric']}])
+
+            db.insert('alert_tests', build_alert_setting)
+            alert_setting_id = db.cur.lastrowid
+
+            build_alert_assoc['alert_test_id'] = alert_setting_id
+            build_alert_assoc['entity_type'] = alert_setting['entity_type'];
+            build_alert_assoc['enable'] = '1'
+            build_alert_assoc['entity_attribs'] = simplejson.dumps([{'value': alert_setting['entity_attribute']['value'], 'condition': alert_setting['entity_attribute']['condition'], 'attrib': alert_setting['entity_attribute']['attrib'], 'metric': alert_setting['condition_metric']}])
+            db.insert('alert_assoc', build_alert_assoc)
+        return result
+    @classmethod
+    def update_alert_setting(cls, alert_setting=None, force=False):
+        result = {}
+        ret = False
+        with dbutil.Session() as db:
+            build_alert_assoc = {}
+            devcsql = "SELECT COUNT(device_id) FROM devices"
+            devTotal = db.one(sql=devcsql)
+            if len(alert_setting['devices']) == devTotal:
+                build_alert_assoc['device_attribs'] = simplejson.dumps([{'value':None, 'condition':None, 'attrib':'*', 'metric':alert_setting['condition_metric']}])
+            else:
+                hostname_list = []
+                for dev_id in alert_setting['devices']:
+                    hostname = DeviceReader.get_device_host_by_id(dev_id['device_id'])
+                    hostname_list.append("{}".format(hostname['hostname']))
+                build_hostname_list = "{}".format(','.join(hostname_list))
+                build_alert_assoc['device_attribs'] = simplejson.dumps([{'value':build_hostname_list, 'condition':'in', 'attrib':'hostname', 'metric':alert_setting['condition_metric']}])
+
+            build_alert_assoc['entity_attribute'] = simplejson.dumps([{'value':alert_setting['alert_assoc'][0]['entity_attribute'][0]['value'], 'condition': alert_setting['alert_assoc'][0]['entity_attribute'][0]['condition'], 'attrib': alert_setting['alert_assoc'][0]['entity_attribute'][0]['attrib']}])
+            command = "UPDATE `alert_assoc` SET device_attribs=%s,entity_attribs=%s WHERE `alert_assoc_id`= %s"
+            ret = db.execute(sql=command, param=( build_alert_assoc['device_attribs'],build_alert_assoc['entity_attribute'], alert_setting['alert_assoc'][0]['alert_assoc_id']))
+            #condition , name , message are chaned
+            build_alert_setting = {}
+            build_alert_setting['conditions'] = simplejson.dumps([{'metric': alert_setting['condition_metric'], 'condition': alert_setting['condition_symbol'], 'value': alert_setting['condition_value'], 'attrib':'*'}])
+
+            command =  "UPDATE `alert_tests` SET `alert_name`=%s, `alert_message`=%s, `conditions`=%s WHERE `alert_test_id`= %s"
+            ret = db.execute(sql=command, param=(alert_setting['alert_name'], alert_setting['alert_message'], build_alert_setting['conditions'], alert_setting['alert_setting_id']))
+        return ret
+    @classmethod
+    def delete_alert_settings(cls, alert_settings):
+        ret = False
+        with dbutil.Session() as db:
+            for alert_setting in alert_settings:
+                if alert_setting.get('alert_setting_id', None):
+                    ret = db.execute('DELETE FROM alert_tests WHERE alert_test_id=%s',param= alert_setting['alert_setting_id'])
+                    ret = db.execute('DELETE FROM alert_table WHERE alert_test_id=%s',param= alert_setting['alert_setting_id'])
+                    ret = db.execute('DELETE FROM alert_assoc WHERE alert_test_id=%s',param= alert_setting['alert_setting_id'])
+        return ret
 
 class AlertLogReader(object):
     @classmethod

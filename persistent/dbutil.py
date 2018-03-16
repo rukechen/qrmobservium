@@ -18,6 +18,7 @@ class Session(object):
     def __exit__(self, exc_type, exc_val, exc_tb):
         if self.conn:
             LOG.debug('return db connection to pool')
+            self.conn.commit()
             self.cur.close()
             self.conn.close()
 
@@ -57,6 +58,7 @@ class Session(object):
         return self.cur.fetchall()
 
     def execute(self, sql, param=None):
+
         if param:
             result = self.cur.execute(sql, param)
         else:
@@ -67,6 +69,6 @@ class Session(object):
     def insert(self, table, param_dict):
         placeholders = ', '.join(['%s'] * len(param_dict))
         columns = ', '.join(param_dict.keys())
-        sql = "INSERT INTO %s (%s) VALUES (%s)" % (table, columns, placeholders)
+        sql = "INSERT INTO `%s` (%s) VALUES (%s)" % (table, columns, placeholders)
         LOG.debug("insert sql: %s vals:%s" % (sql, param_dict.values()) )
         return self.cur.execute(sql, param_dict.values())
