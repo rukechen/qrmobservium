@@ -46,7 +46,7 @@ api.add_resource(analysis.AnalysisSNMPHistory, '/v1/analysis/snmp/<string:device
 api.add_resource(event_logs.EventLogs, '/v1/eventlogs', resource_class_kwargs=app_for_resources)
 
 #alertlog
-api.add_resource(alert_logs.AlertLogs, '/v1/alertlogs', resource_class_kwargs=app_for_resources)
+api.add_resource(alert_logs.AlertLogs, '/v1/logs/alert', resource_class_kwargs=app_for_resources)
 
 #alertsetting
 api.add_resource(alert_setting.AlertSetting, '/v1/alert/setting', resource_class_kwargs=app_for_resources)

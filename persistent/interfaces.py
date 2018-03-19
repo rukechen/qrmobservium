@@ -718,15 +718,16 @@ class AlertLogReader(object):
     @classmethod
     def get_snmp_alertlog(cls, device_id=None, sensor_id=None, alert_status=None,
         start_time="", end_time="", cur_page=1, page_size=2, order_by=None, sort=None):
+
         #ToDo: query by sensor_id, and sensor_type. (Maybe same sesnor_id but different sensor_type)
-        translate_to_table = {'processor':'processors', 'mempool':'mempools', 'sensor':'sensors', 'status':'status', "storage":"storage", "port":"ports"}
+        translate_to_table = {'processor':'processors', 'mempool':'mempools', 'sensor':'sensors', 'status':'status', "storage":"storage", "port":"ports", 'device': 'devices'}
         filter_cmd = ""
         filter_params = []
         result = {}
         datas = []
         cache_entity_type_and_id_list = []
         cache_alert_table = []
-        print device_id
+        #print 'device_id %s' % device_id
         with dbutil.Session() as db:
             alert_logs = []
             typesql = "SELECT DISTINCT entity_type,entity_id from alert_log"
@@ -748,6 +749,7 @@ class AlertLogReader(object):
             csql = "SELECT count(alert_log.entity_id), timestamp as on_time FROM `alert_log` WHERE `log_type` = 2 AND alert_test_id IN (SELECT alert_test_id from alert_tests)" + filter_cmd
             sql = "SELECT alert_log.event_id, alert_log.entity_id, alert_log.entity_type, alert_log.alert_test_id, alert_log.device_id, DATE_FORMAT(`alert_log`.`timestamp`, '%%Y-%%m-%%d %%H:%%i:%%S')as on_time, B.conditions, B.alert_name, C.hostname FROM `alert_log` LEFT JOIN `alert_tests` AS B ON alert_log.alert_test_id = B.alert_test_id LEFT JOIN `devices` as C on alert_log.device_id = C.device_id WHERE `log_type` = 2 AND B.alert_test_id IN (SELECT alert_test_id from alert_tests)" + filter_cmd + order_cmd + " LIMIT %s, %s"
             total = db.one(sql=csql, param=filter_params)
+
             filter_params.append((cur_page-1)*page_size)
             filter_params.append(page_size)
             ret = db.all(sql = sql , param=filter_params )
@@ -755,16 +757,23 @@ class AlertLogReader(object):
             for e_type in e_types:
                 if e_type['entity_type'] == 'port':
                     descr = 'ifDescr'
+                elif e_type['entity_type'] == 'device':
+                    descr = None
                 else:
                     descr= '%s_descr' % e_type['entity_type']
                 sensor_id = str('%s_id' % e_type['entity_type'])
-                detailsql = "SELECT `%s` as name, `%s` as sensor_id FROM `%s` WHERE `%s` = %s" % (descr , sensor_id ,translate_to_table[e_type['entity_type']], sensor_id, e_type['entity_id'])
+                if descr:
+                    detailsql = "SELECT `%s` as name, `%s` as sensor_id FROM `%s` WHERE `%s` = %s" % (descr , sensor_id ,translate_to_table[e_type['entity_type']], sensor_id, e_type['entity_id'])
+                else:
+                    detailsql = "SELECT `%s` as name , device_id as sensor_id FROM `%s` WHERE `device_id` = %s" % ("hostname" ,translate_to_table[e_type['entity_type']],  e_type['entity_id'])
+
                 ret = db.row(sql = detailsql)
+                ret['entity_type'] = e_type['entity_type']
                 cache_entity_type_and_id_list.append(ret)
 
             for alert_log in alert_logs:
                 for cache_list in cache_entity_type_and_id_list:
-                    if alert_log['entity_id'] == cache_list['sensor_id']:
+                    if alert_log['entity_id'] == cache_list['sensor_id'] and alert_log['entity_type'] == cache_list['entity_type']:
                         alert_log['name'] = cache_list['name']
                 for cache_list in cache_alert_table:
                     if alert_log['entity_id'] == cache_list['entity_id'] and alert_log['entity_type'] == cache_list['entity_type']:
