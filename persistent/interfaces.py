@@ -452,9 +452,12 @@ class AlertReader(object):
 class AlertWriter(object):
     @classmethod
     def match_device_entities(cls, db, device_id, entity_attribs, entity_type):
-        translate_to_table = {'processor':'processors', 'mempool':'mempools', 'sensor':'sensors', 'status':'status', "storage":"storage", "port":"ports"}
+        translate_to_table = {'processor':'processors', 'mempool':'mempools', 'sensor':'sensors', 'status':'status', "storage":"storage", "port":"ports", 'device': 'devices'}
         filter_params = []
-        sql = "SELECT * from " + translate_to_table[entity_type] + " WHERE device_id = %s"
+        if entity_type != 'device':
+            sql = "SELECT * from " + translate_to_table[entity_type] + " WHERE device_id = %s AND deleted !=1"
+        else:
+            sql = "SELECT * from " + translate_to_table[entity_type] + " WHERE device_id = %s"
         filter_params.append(device_id)
         for attr in entity_attribs:
              if attr['condition'] == 'gt' or attr['condition'] == 'greater' or attr['condition'] == '>':
@@ -494,7 +497,7 @@ class AlertWriter(object):
     @classmethod
     def match_device(cls, db, dev_id, device_attribs):
         ret = False
-        print device_attribs
+        #print device_attribs
         filter_params = []
         devcsql = "SELECT COUNT(*) FROM `devices` AS d  WHERE d.`device_id` = %s"
         filter_params.append(int(dev_id))
@@ -585,7 +588,7 @@ class AlertWriter(object):
                             #print cur_alert_table[entity_type][str(entity_id)][str(alert_id)]
                             #print 'abc: %s' % cur_alert_table[entity_type][entity_id][alert_id]
                             if cur_alert_table[dev][entity_type][entity_id][alert_id]:
-                                print 'dev %s alert_assocs %s' % (dev,cur_alert_table[dev][entity_type][entity_id][alert_id]['alert_assocs'])
+                                #print 'dev %s alert_assocs %s' % (dev,cur_alert_table[dev][entity_type][entity_id][alert_id]['alert_assocs'])
                                 if ',' in cur_alert_table[dev][entity_type][entity_id][alert_id]['alert_assocs']:
                                     comparedString = cur_alert_table[dev][entity_type][entity_id][alert_id]['alert_assocs'].split(',')
                                     comparedString = [ int(tmp) for tmp in comparedString]
@@ -621,7 +624,7 @@ class AlertWriter(object):
                                 alert_table['alert_test_id'] = alert_id
                                 alert_table['alert_assocs'] = result[dev][entity_type][entity_id][alert_id][0]
                                 ret = db.insert('alert_table', alert_table)
-            print 'check cur_table %s' % simplejson.dumps(cur_alert_table)
+            #print 'check cur_table %s' % simplejson.dumps(cur_alert_table)
             for dev in cur_alert_table:
                 for entity_type in cur_alert_table[dev]:
                     #print cur_alert_table[dev][entity_type]
@@ -747,7 +750,7 @@ class AlertLogReader(object):
             order_cmd = " ORDER BY "
             order_cmd = order_cmd + "on_time DESC"
             csql = "SELECT count(alert_log.entity_id), timestamp as on_time FROM `alert_log` WHERE `log_type` = 2 AND alert_test_id IN (SELECT alert_test_id from alert_tests)" + filter_cmd
-            sql = "SELECT alert_log.event_id, alert_log.entity_id, alert_log.entity_type, alert_log.alert_test_id, alert_log.device_id, DATE_FORMAT(`alert_log`.`timestamp`, '%%Y-%%m-%%d %%H:%%i:%%S')as on_time, B.conditions, B.alert_name, C.hostname FROM `alert_log` LEFT JOIN `alert_tests` AS B ON alert_log.alert_test_id = B.alert_test_id LEFT JOIN `devices` as C on alert_log.device_id = C.device_id WHERE `log_type` = 2 AND B.alert_test_id IN (SELECT alert_test_id from alert_tests)" + filter_cmd + order_cmd + " LIMIT %s, %s"
+            sql = "SELECT alert_log.event_id, alert_log.entity_id, alert_log.entity_type, alert_log.alert_test_id as alert_setting_id, alert_log.device_id, DATE_FORMAT(`alert_log`.`timestamp`, '%%Y-%%m-%%d %%H:%%i:%%S')as on_time, UNIX_TIMESTAMP(`alert_log`.`timestamp`) as `unixtime`,B.conditions, B.alert_name, C.hostname FROM `alert_log` LEFT JOIN `alert_tests` AS B ON alert_log.alert_test_id = B.alert_test_id LEFT JOIN `devices` as C on alert_log.device_id = C.device_id WHERE `log_type` = 2 AND B.alert_test_id IN (SELECT alert_test_id from alert_tests)" + filter_cmd + order_cmd + " LIMIT %s, %s"
             total = db.one(sql=csql, param=filter_params)
 
             filter_params.append((cur_page-1)*page_size)
