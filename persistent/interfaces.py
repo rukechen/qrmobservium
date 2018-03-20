@@ -720,7 +720,7 @@ class AlertWriter(object):
 class AlertLogReader(object):
     @classmethod
     def get_snmp_alertlog(cls, device_id=None, sensor_id=None, alert_status=None,
-        start_time="", end_time="", cur_page=1, page_size=2, order_by=None, sort=None):
+        start_time="", end_time="", cur_page=1, page_size=50, order_by=None, sort=None):
 
         #ToDo: query by sensor_id, and sensor_type. (Maybe same sesnor_id but different sensor_type)
         translate_to_table = {'processor':'processors', 'mempool':'mempools', 'sensor':'sensors', 'status':'status', "storage":"storage", "port":"ports", 'device': 'devices'}
@@ -750,7 +750,7 @@ class AlertLogReader(object):
             order_cmd = " ORDER BY "
             order_cmd = order_cmd + "on_time DESC"
             csql = "SELECT count(alert_log.entity_id), timestamp as on_time FROM `alert_log` WHERE `log_type` = 2 AND alert_test_id IN (SELECT alert_test_id from alert_tests)" + filter_cmd
-            sql = "SELECT alert_log.event_id, alert_log.entity_id, alert_log.entity_type, alert_log.alert_test_id as alert_setting_id, alert_log.device_id, DATE_FORMAT(`alert_log`.`timestamp`, '%%Y-%%m-%%d %%H:%%i:%%S')as on_time, UNIX_TIMESTAMP(`alert_log`.`timestamp`) as `unixtime`,B.conditions, B.alert_name, C.hostname FROM `alert_log` LEFT JOIN `alert_tests` AS B ON alert_log.alert_test_id = B.alert_test_id LEFT JOIN `devices` as C on alert_log.device_id = C.device_id WHERE `log_type` = 2 AND B.alert_test_id IN (SELECT alert_test_id from alert_tests)" + filter_cmd + order_cmd + " LIMIT %s, %s"
+            sql = "SELECT alert_log.event_id, alert_log.entity_id, alert_log.entity_type, alert_log.alert_test_id as alert_setting_id, alert_log.device_id, DATE_FORMAT(`alert_log`.`timestamp`, '%%Y-%%m-%%d %%H:%%i:%%S')as on_time, UNIX_TIMESTAMP(`alert_log`.`timestamp`) as `unixtime`,alert_log.message ,B.conditions, B.alert_name, C.hostname FROM `alert_log` LEFT JOIN `alert_tests` AS B ON alert_log.alert_test_id = B.alert_test_id LEFT JOIN `devices` as C on alert_log.device_id = C.device_id WHERE `log_type` = 2 AND B.alert_test_id IN (SELECT alert_test_id from alert_tests)" + filter_cmd + order_cmd + " LIMIT %s, %s"
             total = db.one(sql=csql, param=filter_params)
 
             filter_params.append((cur_page-1)*page_size)
