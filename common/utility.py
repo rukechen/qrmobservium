@@ -19,3 +19,18 @@ def is_valid_ip_address(address):
         return False
 
     return True
+
+def execute_cmd(cmd):
+    import subprocess
+    import sys
+    try:
+        message = subprocess.Popen(cmd,
+                      shell=True,
+                      stdout = subprocess.PIPE,
+                      stderr=subprocess.PIPE).communicate()
+
+    except Exception, e:
+        LOG.info( e)
+        return False
+    return message[0]
+    
