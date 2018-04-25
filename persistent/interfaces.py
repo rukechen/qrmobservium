@@ -455,8 +455,12 @@ class AlertWriter(object):
         translate_to_table = {'processor':'processors', 'mempool':'mempools', 'sensor':'sensors', 'status':'status', "storage":"storage", "port":"ports", 'device': 'devices'}
         filter_params = []
 
-        if entity_type != 'device' and entity_type!= 'sensor':
+        if entity_type == 'storage':
+            sql = "SELECT * from " + translate_to_table[entity_type] + " WHERE device_id = %s AND storage_deleted !=1"
+        elif entity_type == 'port':
             sql = "SELECT * from " + translate_to_table[entity_type] + " WHERE device_id = %s AND deleted !=1"
+        elif entity_type == 'mempool':
+            sql = "SELECT * from " + translate_to_table[entity_type] + " WHERE device_id = %s AND mempool_deleted !=1"
         else:
             sql = "SELECT * from " + translate_to_table[entity_type] + " WHERE device_id = %s"
         filter_params.append(device_id)
