@@ -454,7 +454,8 @@ class AlertWriter(object):
     def match_device_entities(cls, db, device_id, entity_attribs, entity_type):
         translate_to_table = {'processor':'processors', 'mempool':'mempools', 'sensor':'sensors', 'status':'status', "storage":"storage", "port":"ports", 'device': 'devices'}
         filter_params = []
-        if entity_type != 'device':
+
+        if entity_type != 'device' and entity_type!= 'sensor':
             sql = "SELECT * from " + translate_to_table[entity_type] + " WHERE device_id = %s AND deleted !=1"
         else:
             sql = "SELECT * from " + translate_to_table[entity_type] + " WHERE device_id = %s"
