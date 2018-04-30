@@ -710,6 +710,7 @@ class AlertWriter(object):
 
             command =  "UPDATE `alert_tests` SET `alert_name`=%s, `alert_message`=%s, `conditions`=%s WHERE `alert_test_id`= %s"
             ret = db.execute(sql=command, param=(alert_setting['alert_name'], alert_setting['alert_message'], build_alert_setting['conditions'], alert_setting['alert_setting_id']))
+            ret = AlertWriter.update_device_alert_table()
         return ret
     @classmethod
     def delete_alert_settings(cls, alert_settings):
