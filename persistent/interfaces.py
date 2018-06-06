@@ -775,11 +775,10 @@ class AlertLogReader(object):
                     detailsql = "SELECT `%s` as name, `%s` as sensor_id FROM `%s` WHERE `%s` = %s" % (descr , sensor_id ,translate_to_table[e_type['entity_type']], sensor_id, e_type['entity_id'])
                 else:
                     detailsql = "SELECT `%s` as name , device_id as sensor_id FROM `%s` WHERE `device_id` = %s" % ("hostname" ,translate_to_table[e_type['entity_type']],  e_type['entity_id'])
-
                 ret = db.row(sql = detailsql)
-                ret['entity_type'] = e_type['entity_type']
-                cache_entity_type_and_id_list.append(ret)
-
+                if ret:
+                    ret['entity_type'] = e_type['entity_type']
+                    cache_entity_type_and_id_list.append(ret)
             for alert_log in alert_logs:
                 for cache_list in cache_entity_type_and_id_list:
                     if alert_log['entity_id'] == cache_list['sensor_id'] and alert_log['entity_type'] == cache_list['entity_type']:
