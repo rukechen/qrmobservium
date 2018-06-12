@@ -725,7 +725,7 @@ class AlertWriter(object):
 
 class AlertLogReader(object):
     @classmethod
-    def get_snmp_alertlog(cls, device_id=None, sensor_id=None, alert_status=None,
+    def get_snmp_alertlog(cls, device_id=None, entity_type=None, sensor_id=None, alert_status=None,
         start_time="", end_time="", cur_page=1, page_size=50, order_by=None, sort=None):
 
         #ToDo: query by sensor_id, and sensor_type. (Maybe same sesnor_id but different sensor_type)
@@ -752,7 +752,9 @@ class AlertLogReader(object):
             if device_id:
                 filter_cmd = filter_cmd + " and alert_log.device_id = %s "
                 filter_params.append(device_id)
-
+            if entity_type:
+                filter_cmd = filter_cmd + " and alert_log.entity_type = %s "
+                filter_params.append(entity_type)
             order_cmd = " ORDER BY "
             order_cmd = order_cmd + "on_time DESC"
             csql = "SELECT count(alert_log.entity_id), timestamp as on_time FROM `alert_log` WHERE `log_type` = 2 AND alert_test_id IN (SELECT alert_test_id from alert_tests)" + filter_cmd
@@ -763,6 +765,7 @@ class AlertLogReader(object):
             filter_params.append(page_size)
             ret = db.all(sql = sql , param=filter_params )
             alert_logs.extend(ret)
+
             for e_type in e_types:
                 if e_type['entity_type'] == 'port':
                     descr = 'ifDescr'
@@ -779,6 +782,7 @@ class AlertLogReader(object):
                 if ret:
                     ret['entity_type'] = e_type['entity_type']
                     cache_entity_type_and_id_list.append(ret)
+                    #LOG.info(simplejson.dumps(cache_entity_type_and_id_list))
             for alert_log in alert_logs:
                 for cache_list in cache_entity_type_and_id_list:
                     if alert_log['entity_id'] == cache_list['sensor_id'] and alert_log['entity_type'] == cache_list['entity_type']:
