@@ -18,7 +18,7 @@ class AlertLogs(BaseResource):
         mesg = {}
         args = alertlogs_parser.parse_args()
         try:
-            mesg = self.app.get_alert_log_reader().get_snmp_alertlog(device_id=args['device_id'], entity_type=args['entity_type'] ,start_time=args['start_time'], end_time=args['end_time'], cur_page=args['page'])
+            mesg = self.app.get_alert_log_reader().get_snmp_alertlog(device_id=args['device_id'], entity_type=args['entity_type'] ,start_time=args['start_time'], end_time=args['end_time'], cur_page=args['page'], page_size=args['limit'])
         except KeyError as e:
             raise DeviceNotExistError
         except Exception as e:
