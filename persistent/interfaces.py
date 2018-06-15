@@ -757,8 +757,8 @@ class AlertLogReader(object):
                 filter_params.append(entity_type)
             order_cmd = " ORDER BY "
             order_cmd = order_cmd + "on_time DESC"
-            csql = "SELECT count(alert_log.entity_id), timestamp as on_time FROM `alert_log` WHERE `log_type` = 2 AND alert_test_id IN (SELECT alert_test_id from alert_tests)" + filter_cmd
-            sql = "SELECT alert_log.event_id, alert_log.entity_id, alert_log.entity_type, alert_log.alert_test_id as alert_setting_id, alert_log.device_id, DATE_FORMAT(`alert_log`.`timestamp`, '%%Y-%%m-%%d %%H:%%i:%%S')as on_time, UNIX_TIMESTAMP(`alert_log`.`timestamp`) as `unixtime`,alert_log.message ,B.conditions, B.alert_name, C.hostname FROM `alert_log` LEFT JOIN `alert_tests` AS B ON alert_log.alert_test_id = B.alert_test_id LEFT JOIN `devices` as C on alert_log.device_id = C.device_id WHERE `log_type` = 2 AND B.alert_test_id IN (SELECT alert_test_id from alert_tests)" + filter_cmd + order_cmd + " LIMIT %s, %s"
+            csql = "SELECT count(alert_log.entity_id), timestamp as on_time FROM `alert_log` WHERE `log_type` IN (2,5) AND alert_test_id IN (SELECT alert_test_id from alert_tests)" + filter_cmd
+            sql = "SELECT alert_log.event_id, alert_log.entity_id, alert_log.entity_type,alert_log.log_type as status, alert_log.alert_test_id as alert_setting_id, alert_log.device_id, DATE_FORMAT(`alert_log`.`timestamp`, '%%Y-%%m-%%d %%H:%%i:%%S')as on_time, UNIX_TIMESTAMP(`alert_log`.`timestamp`) as `unixtime`,alert_log.message ,B.conditions, B.alert_name, C.hostname FROM `alert_log` LEFT JOIN `alert_tests` AS B ON alert_log.alert_test_id = B.alert_test_id LEFT JOIN `devices` as C on alert_log.device_id = C.device_id WHERE `log_type` IN (2,5) AND B.alert_test_id IN (SELECT alert_test_id from alert_tests)" + filter_cmd + order_cmd + " LIMIT %s, %s"
             total = db.one(sql=csql, param=filter_params)
 
             filter_params.append((cur_page-1)*page_size)
@@ -787,9 +787,6 @@ class AlertLogReader(object):
                 for cache_list in cache_entity_type_and_id_list:
                     if alert_log['entity_id'] == cache_list['sensor_id'] and alert_log['entity_type'] == cache_list['entity_type']:
                         alert_log['name'] = cache_list['name']
-                for cache_list in cache_alert_table:
-                    if alert_log['entity_id'] == cache_list['entity_id'] and alert_log['entity_type'] == cache_list['entity_type']:
-                        alert_log['alert_status'] = cache_list['alert_status']
 
             result['total'] = total
             result['datas'] = alert_logs
