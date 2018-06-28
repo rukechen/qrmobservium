@@ -418,9 +418,8 @@ class DeviceReader(object):
 
 class AlertReader(object):
     @classmethod
-    def get_alerts(cls, device_id=None, alert_status=None, order_by=None):
+    def get_alerts(cls, device_id=None, entity_type=None, alert_status=None, order_by=None):
         result = {}
-        LOG.info(device_id)
         with dbutil.Session() as db:
             order_cmd = " ORDER BY "
             order_cmd = order_cmd + "last_alerted DESC"
@@ -429,11 +428,15 @@ class AlertReader(object):
             if device_id:
                 filter_cmd = filter_cmd + " and `alert_table`.device_id = %s "
                 filter_params.append(device_id)
+            if entity_type:
+                filter_cmd = filter_cmd + " and `alert_table`.entity_type = %s "
+                filter_params.append(entity_type)
             # alert_status
             filter_cmd = filter_cmd + " and `alert_status` IN (%s) "
             filter_params.append(alert_status)
             order_cmd = " ORDER BY "
             order_cmd = order_cmd + order_by + " DESC"
+
             sql = "SELECT `alert_table`.device_id, `alert_table`.entity_type, `alert_table`.entity_id,\
                    `alert_table`.alert_test_id as alert_setting_id, alert_status, last_checked, \
                    last_alerted, last_changed, B.alert_name,C.hostname FROM `alert_table` \
