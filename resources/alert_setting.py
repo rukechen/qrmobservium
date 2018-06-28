@@ -135,3 +135,20 @@ class AlertSetting(BaseResource):
             raise UnknowExceptionError
 
         return '', status_codes.HTTP_200_OK
+get_alerts_parser = reqparse.RequestParser()
+get_alerts_parser.add_argument('device_id', type=int, location='args', default=None)
+get_alerts_parser.add_argument('alert_status', type=int, location='args', default=0)
+get_alerts_parser.add_argument('order_by', type=str, location='args', default='last_alerted')
+class Alerts(BaseResource):
+    def get(self):
+        mesg = {}
+        args = get_alerts_parser.parse_args()
+        try:
+            mesg = self.app.get_alert_setting_reader().get_alerts(device_id=args['device_id'], alert_status=args['alert_status'], order_by=args['order_by'])
+        except KeyError as e:
+            raise DeviceNotExistError
+        except Exception as e:
+            LOG.warning('AccessDatabaseError: '+str(e))
+            raise AccessDatabaseError
+
+        return mesg, status_codes.HTTP_200_OK

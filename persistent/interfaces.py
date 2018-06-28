@@ -418,6 +418,34 @@ class DeviceReader(object):
 
 class AlertReader(object):
     @classmethod
+    def get_alerts(cls, device_id=None, alert_status=None, order_by=None):
+        result = {}
+        LOG.info(device_id)
+        with dbutil.Session() as db:
+            order_cmd = " ORDER BY "
+            order_cmd = order_cmd + "last_alerted DESC"
+            filter_cmd = ""
+            filter_params = []
+            if device_id:
+                filter_cmd = filter_cmd + " and `alert_table`.device_id = %s "
+                filter_params.append(device_id)
+            # alert_status
+            filter_cmd = filter_cmd + " and `alert_status` IN (%s) "
+            filter_params.append(alert_status)
+            order_cmd = " ORDER BY "
+            order_cmd = order_cmd + order_by + " DESC"
+            sql = "SELECT `alert_table`.device_id, `alert_table`.entity_type, `alert_table`.entity_id,\
+                   `alert_table`.alert_test_id as alert_setting_id, alert_status, last_checked, \
+                   last_alerted, last_changed, B.alert_name,C.hostname FROM `alert_table` \
+                   LEFT JOIN `alert_tests` AS B ON `alert_table`.alert_test_id = B.alert_test_id  \
+                   LEFT JOIN `devices` as C on C.device_id=`alert_table`.device_id  WHERE 1 \
+                   AND (( (`alert_table`.`device_id` != '' AND `alert_table`.`device_id` IS NOT NULL)))" \
+                  + filter_cmd + order_cmd
+            result = db.all(sql = sql, param=filter_params)
+            return result
+
+
+    @classmethod
     def get_alert_settings(cls, cur_page=1, page_size=2):
         result = {}
         filter_params = []

@@ -51,4 +51,7 @@ api.add_resource(alert_logs.AlertLogs, '/v1/logs/alert', resource_class_kwargs=a
 #alertsetting
 api.add_resource(alert_setting.AlertSetting, '/v1/alert/setting', resource_class_kwargs=app_for_resources)
 
+#alerts
+api.add_resource(alert_setting.Alerts, '/v1/alerts', resource_class_kwargs=app_for_resources)
+
 
