@@ -38,7 +38,6 @@ def extract_livedata_values(device_id, metric_id):
             metrics['value'] = value
             metrics['metric_id'] = metric_id
             mesg['metrics'] = metrics
-            mesg = [mesg]
     except:
         return '', status_codes.HTTP_201_CREATED
     return mesg, status_codes.HTTP_200_OK
@@ -60,7 +59,7 @@ class LiveData(BaseResource):
         mesg = {}
         args = livedata_parser.parse_args()
         try:
-            if args['sensor_table'] == 'port':
+            if args['sensor_table'] == 'ports':
                 return extract_livedata_values(device_id, metric_id)
             else:
                 mesg = self.app.get_live_data_reader().get_livedata(device_id, args['sensor_table'], metric_id)
